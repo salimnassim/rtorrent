@@ -229,8 +229,8 @@ func (p *rpcParser) parseTypedValue(se xml.StartElement) (Value, error) {
 	}
 }
 
-// parseInt reads an integer scalar tag and wraps it with new.
-func (p *rpcParser) parseInt(name string, new func(int64) Value) (Value, error) {
+// parseInt reads an integer scalar tag and wraps it with newValue.
+func (p *rpcParser) parseInt(name string, newValue func(int64) Value) (Value, error) {
 	s, err := p.readText(name)
 	if err != nil {
 		return Value{}, err
@@ -239,7 +239,7 @@ func (p *rpcParser) parseInt(name string, new func(int64) Value) (Value, error) 
 	if err != nil {
 		return Value{}, fmt.Errorf("decode xml-rpc: invalid %s value %q: %w", name, s, err)
 	}
-	return new(n), nil
+	return newValue(n), nil
 }
 
 // parseArray parses the content of an <array> element, consuming through
