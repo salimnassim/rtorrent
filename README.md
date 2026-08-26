@@ -15,7 +15,7 @@ for proxy setups.
 - `scgi.go` `scgiTransport`: TCP and Unix socket, direct to rTorrent.
 - `http.go` `httpTransport`: for proxy setups.
 - `client.go` `Client`, `Dial`/`DialUnix`/`DialHTTP`, `Call`, `Multicall`,
-  `multicallRows`.
+  `multicallRows`, `Option`s (`WithTimeout`, `WithBasicAuth`).
 - `torrent.go` `Torrent` model, `Client.Torrents`, `Client.TorrentsCustom`.
 - `peer.go` `Peer` model, `Client.Peers`, `Client.PeersCustom`.
 - `tracker.go` `Tracker` model, `Client.Trackers`, `Client.TrackersCustom`.
@@ -43,6 +43,14 @@ for _, t := range torrents {
 	fmt.Println(t.Name, t.SizeBytes)
 }
 ```
+
+For an HTTP-proxied setup behind Basic Auth:
+
+```go
+client := rtorrent.DialHTTP("https://example.com/RPC2",
+	rtorrent.WithBasicAuth("user", "pass"))
+```
+
 ## Development
 
 ```
