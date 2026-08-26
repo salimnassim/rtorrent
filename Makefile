@@ -1,7 +1,7 @@
 .PHONY: build test test-integration ci
 
 build:
-	go build -o ./dist/rtcli ./cmd/main.go
+	go build -o ./dist/rtctl ./cmd/rtctl.go
 
 test:
 	go test -v ./...
