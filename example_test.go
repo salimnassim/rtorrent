@@ -17,6 +17,15 @@ func Example_dial() {
 	}
 }
 
+func Example_dialHTTPBasicAuth() {
+	client := rtorrent.DialHTTP("https://example.com/RPC2", rtorrent.WithBasicAuth("user", "pass"))
+
+	ctx := context.Background()
+	if _, err := client.Call(ctx, "system.listMethods"); err != nil {
+		fmt.Println(err)
+	}
+}
+
 func Example_torrents() {
 	client := rtorrent.Dial("127.0.0.1:5000")
 

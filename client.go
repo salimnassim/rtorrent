@@ -24,6 +24,17 @@ func WithTimeout(d time.Duration) Option {
 	}
 }
 
+// WithBasicAuth sets HTTP Basic Auth credentials on requests made by a
+// Client constructed with DialHTTP.
+func WithBasicAuth(username, password string) Option {
+	return func(c *Client) {
+		if t, ok := c.t.(*httpTransport); ok {
+			t.username = username
+			t.password = password
+		}
+	}
+}
+
 // Dial returns a Client that connects directly to a SCGI listener
 // over TCP at addr.
 func Dial(addr string, opts ...Option) *Client {

@@ -30,6 +30,42 @@ func TestHTTPTransportCallSuccess(t *testing.T) {
 	}
 }
 
+func TestHTTPTransportCallBasicAuth(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, pass, ok := r.BasicAuth()
+		if !ok {
+			t.Error("BasicAuth() ok = false, want true")
+		}
+		if user != "user" || pass != "pass" {
+			t.Errorf("BasicAuth() = (%q, %q), want (%q, %q)", user, pass, "user", "pass")
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("<methodResponse/>"))
+	}))
+	t.Cleanup(srv.Close)
+
+	tr := &httpTransport{url: srv.URL, httpClient: srv.Client(), username: "user", password: "pass"}
+	if _, err := tr.call(context.Background(), []byte("request")); err != nil {
+		t.Fatalf("call() unexpected error: %v", err)
+	}
+}
+
+func TestHTTPTransportCallNoBasicAuth(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, _, ok := r.BasicAuth(); ok {
+			t.Error("BasicAuth() ok = true, want false when username is unset")
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("<methodResponse/>"))
+	}))
+	t.Cleanup(srv.Close)
+
+	tr := &httpTransport{url: srv.URL, httpClient: srv.Client()}
+	if _, err := tr.call(context.Background(), []byte("request")); err != nil {
+		t.Fatalf("call() unexpected error: %v", err)
+	}
+}
+
 func TestHTTPTransportCallNon2xx(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
