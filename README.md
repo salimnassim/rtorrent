@@ -20,6 +20,7 @@ for proxy setups.
 - `peer.go` `Peer` model, `Client.Peers`, `Client.PeersCustom`.
 - `tracker.go` `Tracker` model, `Client.Trackers`, `Client.TrackersCustom`.
 - `file.go` `File` model, `Client.Files`, `Client.FilesCustom`.
+- `cmd/rtctl.go` `rtctl`, a minimal CLI for calling XML-RPC methods directly.
 
 ## Install
 
@@ -49,6 +50,15 @@ For an HTTP-proxied setup behind Basic Auth:
 ```go
 client := rtorrent.DialHTTP("https://example.com/RPC2",
 	rtorrent.WithBasicAuth("user", "pass"))
+```
+
+## CLI
+
+`rtctl` is a minimal CLI for calling XML-RPC methods directly:
+
+```
+go run ./cmd -addr 127.0.0.1:5000 system.listMethods
+go run ./cmd -addr https://foo.bar.tld/RPC2 -user bob -password secret d.multicall2 "" main d.hash= d.name=
 ```
 
 ## Development
