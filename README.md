@@ -47,5 +47,6 @@ for _, t := range torrents {
 
 ```
 make test   # go test -v ./...
+make test-integration   # go test -tags=integration -v ./...
 make ci     # gofmt check, build, vet, race tests, mod tidy check, govulncheck
 ```
