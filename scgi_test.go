@@ -84,6 +84,23 @@ func TestReadSCGIResponse(t *testing.T) {
 	}
 }
 
+func FuzzReadSCGIResponse(f *testing.F) {
+	seeds := []string{
+		"Status: 200 OK\r\nContent-Type: text/xml\r\n\r\n<methodResponse/>",
+		"\r\n<methodResponse/>",
+		"Status: 200 OK\r\n\r\n",
+		"Status: 200 OK\r\nContent-Type: text/xml",
+		"",
+	}
+	for _, s := range seeds {
+		f.Add([]byte(s))
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		_, _ = readSCGIResponse(bytes.NewReader(data))
+	})
+}
+
 func scgiFakeServer(t *testing.T, network, address string, handle func(net.Conn)) string {
 	t.Helper()
 

@@ -2,9 +2,10 @@ package rtorrent
 
 import (
 	"errors"
-	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestDecodeMethodResponse(t *testing.T) {
@@ -104,8 +105,8 @@ func TestDecodeMethodResponse(t *testing.T) {
 			if err != nil {
 				t.Fatalf("decodeMethodResponse() unexpected error: %v", err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("decodeMethodResponse() = %#v, want %#v", got, tt.want)
+			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(Value{})); diff != "" {
+				t.Errorf("decodeMethodResponse() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -142,4 +143,45 @@ func TestDecodeMethodResponseTruncated(t *testing.T) {
 	if !strings.Contains(err.Error(), "decode xml-rpc") {
 		t.Errorf("decodeMethodResponse() error = %v, want it to mention decode xml-rpc", err)
 	}
+}
+
+func FuzzDecodeMethodResponse(f *testing.F) {
+	seeds := []string{
+		`<methodResponse><params><param><value><string>hello</string></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><i4>42</i4></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><int>7</int></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><i8>9223372036854775807</i8></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><double>3.25</double></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><boolean>1</boolean></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><boolean>0</boolean></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><nil/></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><array><data>` +
+			`<value><i4>1</i4></value><value><i4>2</i4></value>` +
+			`</data></array></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><struct>` +
+			`<member><name>a</name><value><i4>1</i4></value></member>` +
+			`<member><name>b</name><value><string>two</string></value></member>` +
+			`</struct></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><struct>` +
+			`<member><name/><value><i4>5</i4></value></member>` +
+			`</struct></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value>` +
+			`<dateTime.iso8601>20260826T00:00:00</dateTime.iso8601>` +
+			`</value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value>` +
+			`<weird><nested>x</nested></weird>` +
+			`</value></param></params></methodResponse>`,
+		`<methodResponse><fault><value><struct>` +
+			`<member><name>faultCode</name><value><i4>7</i4></value></member>` +
+			`<member><name>faultString</name><value><string>method not found</string></value></member>` +
+			`</struct></value></fault></methodResponse>`,
+		`<methodResponse><params><param><value><string>oops`,
+	}
+	for _, s := range seeds {
+		f.Add([]byte(s))
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		_, _ = decodeMethodResponse(data)
+	})
 }
