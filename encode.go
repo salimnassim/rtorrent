@@ -98,16 +98,18 @@ func encodeValue(buf *bytes.Buffer, v Value) {
 // content.
 func escapeXML(s string) string {
 	var b strings.Builder
-	for _, r := range s {
-		switch r {
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
 		case '&':
 			b.WriteString("&amp;")
 		case '<':
 			b.WriteString("&lt;")
 		case '>':
 			b.WriteString("&gt;")
+		case '\r':
+			b.WriteString("&#13;")
 		default:
-			b.WriteRune(r)
+			b.WriteByte(s[i])
 		}
 	}
 	return b.String()
