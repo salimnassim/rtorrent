@@ -86,3 +86,41 @@ func TestEncodeMethodCallNoParams(t *testing.T) {
 		t.Errorf("encodeMethodCall() = %s, want %s", got, want)
 	}
 }
+
+func FuzzEncodeDecodeString(f *testing.F) {
+	seeds := []string{
+		"",
+		"hello",
+		"<a & b>",
+		"line1\nline2",
+		"tab\ttab",
+		"\x00",
+		"unicode ☃",
+		string([]byte{0xff, 0xfe}),
+		"carriage\rreturn",
+		"crlf\r\nline",
+	}
+	for _, s := range seeds {
+		f.Add(s)
+	}
+
+	f.Fuzz(func(t *testing.T, s string) {
+		var buf bytes.Buffer
+		buf.WriteString("<methodResponse><params><param>")
+		encodeValue(&buf, NewString(s))
+		buf.WriteString("</param></params></methodResponse>")
+
+		got, err := decodeMethodResponse(buf.Bytes())
+		if err != nil {
+			return
+		}
+
+		gotStr, err := got.AsString()
+		if err != nil {
+			t.Fatalf("decodeMethodResponse() returned non-string value: %v", err)
+		}
+		if gotStr != s {
+			t.Errorf("round trip through encodeValue/decodeMethodResponse = %q, want %q", gotStr, s)
+		}
+	})
+}
