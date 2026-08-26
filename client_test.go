@@ -3,6 +3,8 @@ package rtorrent
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -117,6 +119,23 @@ func TestClientCallTimeoutPrecedence(t *testing.T) {
 				t.Errorf("Call() took %v, want it to abort near %v", elapsed, tt.wantElapsed)
 			}
 		})
+	}
+}
+
+func TestClientDialHTTPWithBasicAuth(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, pass, ok := r.BasicAuth()
+		if !ok || user != "user" || pass != "pass" {
+			t.Errorf("BasicAuth() = (%q, %q, %v), want (%q, %q, true)", user, pass, ok, "user", "pass")
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<?xml version="1.0"?><methodResponse><params><param><value><string>ok</string></value></param></params></methodResponse>`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c := DialHTTP(srv.URL, WithBasicAuth("user", "pass"))
+	if _, err := c.Call(context.Background(), "system.listMethods"); err != nil {
+		t.Fatalf("Call() unexpected error: %v", err)
 	}
 }
 

@@ -13,6 +13,8 @@ const maxHTTPResponseBytes = 8 << 20
 type httpTransport struct {
 	url        string
 	httpClient *http.Client
+	username   string
+	password   string
 }
 
 // call implements transport.
@@ -22,6 +24,9 @@ func (t *httpTransport) call(ctx context.Context, body []byte) ([]byte, error) {
 		return nil, fmt.Errorf("http: build request: %w", err)
 	}
 	req.Header.Set("Content-Type", "text/xml")
+	if t.username != "" {
+		req.SetBasicAuth(t.username, t.password)
+	}
 
 	resp, err := t.httpClient.Do(req)
 	if err != nil {
