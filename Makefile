@@ -1,7 +1,10 @@
-.PHONY: test ci
+.PHONY: test test-integration ci
 
 test:
 	go test -v ./...
+
+test-integration:
+	go test -tags=integration -v ./...
 
 ci:
 	unformatted="$$(gofmt -l .)"; \

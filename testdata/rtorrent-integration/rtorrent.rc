@@ -1,0 +1,3 @@
+directory = /downloads
+session = /session
+network.scgi.open_port = 0.0.0.0:5000
