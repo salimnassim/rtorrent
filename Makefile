@@ -1,4 +1,7 @@
-.PHONY: test test-integration ci
+.PHONY: build test test-integration ci
+
+build:
+	go build -o ./dist/rtctl ./cmd/rtctl.go
 
 test:
 	go test -v ./...
