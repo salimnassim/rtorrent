@@ -2,7 +2,10 @@ module github.com/salimnassim/rtorrent
 
 go 1.27.0
 
-require github.com/testcontainers/testcontainers-go v0.44.0
+require (
+	github.com/google/go-cmp v0.7.0
+	github.com/testcontainers/testcontainers-go v0.44.0
+)
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
