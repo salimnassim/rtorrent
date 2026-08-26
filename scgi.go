@@ -48,12 +48,6 @@ func (s *scgiTransport) call(ctx context.Context, body []byte) ([]byte, error) {
 		return nil, fmt.Errorf("scgi: write request: %w", err)
 	}
 
-	if cw, ok := conn.(interface{ CloseWrite() error }); ok {
-		if err := cw.CloseWrite(); err != nil {
-			return nil, fmt.Errorf("scgi: close write: %w", err)
-		}
-	}
-
 	respBody, err := readSCGIResponse(conn)
 	if err != nil {
 		return nil, fmt.Errorf("scgi: %w", err)

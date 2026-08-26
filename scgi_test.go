@@ -1,11 +1,15 @@
 package rtorrent
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -104,8 +108,47 @@ func scgiFakeServer(t *testing.T, network, address string, handle func(net.Conn)
 
 func respondSCGI(conn net.Conn, body string) {
 	defer conn.Close()
-	io.Copy(io.Discard, conn)
+	if err := drainSCGIRequest(conn); err != nil {
+		return
+	}
 	conn.Write([]byte("Status: 200 OK\r\n\r\n" + body))
+}
+
+func drainSCGIRequest(r io.Reader) error {
+	br := bufio.NewReader(r)
+
+	lenStr, err := br.ReadString(':')
+	if err != nil {
+		return fmt.Errorf("read netstring length: %w", err)
+	}
+	n, err := strconv.Atoi(strings.TrimSuffix(lenStr, ":"))
+	if err != nil {
+		return fmt.Errorf("parse netstring length: %w", err)
+	}
+
+	headers := make([]byte, n)
+	if _, err := io.ReadFull(br, headers); err != nil {
+		return fmt.Errorf("read headers: %w", err)
+	}
+	if _, err := br.Discard(1); err != nil { // trailing comma
+		return fmt.Errorf("read trailing comma: %w", err)
+	}
+
+	var contentLength int
+	fields := bytes.Split(headers, []byte{0})
+	for i := 0; i+1 < len(fields); i += 2 {
+		if string(fields[i]) == "CONTENT_LENGTH" {
+			contentLength, err = strconv.Atoi(string(fields[i+1]))
+			if err != nil {
+				return fmt.Errorf("parse content length: %w", err)
+			}
+		}
+	}
+
+	if _, err := io.CopyN(io.Discard, br, int64(contentLength)); err != nil {
+		return fmt.Errorf("read body: %w", err)
+	}
+	return nil
 }
 
 func TestSCGITransportCallSuccessTCP(t *testing.T) {
