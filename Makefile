@@ -1,4 +1,6 @@
-.PHONY: build test test-integration ci
+.PHONY: build test test-integration fuzz ci
+
+FUZZ_TARGETS := FuzzDecodeMethodResponse FuzzReadSCGIResponse FuzzEncodeDecodeString
 
 build:
 	go build -o ./dist/rtctl ./cmd/rtctl.go
@@ -8,6 +10,12 @@ test:
 
 test-integration:
 	go test -tags=integration -v ./...
+
+fuzz:
+	for name in $(FUZZ_TARGETS); do \
+		echo "FUZZER $$name :"; \
+		go test -run=^$$ -fuzz="^$$name\$$" -fuzztime=30s . || exit 1; \
+	done
 
 ci:
 	unformatted="$$(gofmt -l .)"; \
