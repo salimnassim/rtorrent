@@ -2,8 +2,9 @@ package rtorrent
 
 import (
 	"errors"
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestValueAsString(t *testing.T) {
@@ -142,8 +143,8 @@ func TestValueAsArray(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AsArray() unexpected error: %v", err)
 	}
-	if !reflect.DeepEqual(got, elems) {
-		t.Errorf("AsArray() = %v, want %v", got, elems)
+	if diff := cmp.Diff(elems, got, cmp.AllowUnexported(Value{})); diff != "" {
+		t.Errorf("AsArray() mismatch (-want +got):\n%s", diff)
 	}
 
 	if _, err := NewString("x").AsArray(); !errors.Is(err, ErrKind) {
@@ -158,8 +159,8 @@ func TestValueAsStruct(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AsStruct() unexpected error: %v", err)
 	}
-	if !reflect.DeepEqual(got, members) {
-		t.Errorf("AsStruct() = %v, want %v", got, members)
+	if diff := cmp.Diff(members, got, cmp.AllowUnexported(Value{})); diff != "" {
+		t.Errorf("AsStruct() mismatch (-want +got):\n%s", diff)
 	}
 
 	if _, err := NewString("x").AsStruct(); !errors.Is(err, ErrKind) {

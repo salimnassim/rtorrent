@@ -2,9 +2,10 @@ package rtorrent
 
 import (
 	"errors"
-	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestDecodeMethodResponse(t *testing.T) {
@@ -104,8 +105,8 @@ func TestDecodeMethodResponse(t *testing.T) {
 			if err != nil {
 				t.Fatalf("decodeMethodResponse() unexpected error: %v", err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("decodeMethodResponse() = %#v, want %#v", got, tt.want)
+			if diff := cmp.Diff(tt.want, got, cmp.AllowUnexported(Value{})); diff != "" {
+				t.Errorf("decodeMethodResponse() mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}
