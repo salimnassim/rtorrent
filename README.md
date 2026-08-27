@@ -1,9 +1,8 @@
 # rtorrent
 
-A dependency-free client for rTorrent's XML-RPC interface. Communicates
-directly over the SCGI listener (TCP or Unix socket). No proxy
-required for a backend/native client, has a HTTP transport as a fallback
-for proxy setups.
+A dependency-free client for rTorrent's XML-RPC interface. Talks directly to
+rTorrent's SCGI listener (TCP or Unix socket), no proxy needed, with an
+HTTP transport as a fallback for proxied setups.
 
 ## Contents
 
@@ -57,6 +56,14 @@ client := rtorrent.DialHTTP("https://example.com/RPC2",
 `rtctl` is a minimal CLI for calling XML-RPC methods directly:
 
 ```
+make build
+rtctl -addr 127.0.0.1:5000 system.listMethods
+rtctl -addr https://foo.bar.tld/RPC2 -user bob -password secret d.multicall2 "" main d.hash= d.name=
+```
+
+Or run from source without building:
+
+```
 go run ./cmd -addr 127.0.0.1:5000 system.listMethods
 go run ./cmd -addr https://foo.bar.tld/RPC2 -user bob -password secret d.multicall2 "" main d.hash= d.name=
 ```
@@ -64,7 +71,12 @@ go run ./cmd -addr https://foo.bar.tld/RPC2 -user bob -password secret d.multica
 ## Development
 
 ```
-make test   # go test -v ./...
-make test-integration   # go test -tags=integration -v ./...
-make ci     # gofmt check, build, vet, race tests, mod tidy check, govulncheck
+make test              # go test -v ./...
+make test-integration  # go test -tags=integration -v ./...
+make fuzz              # fuzz FuzzDecodeMethodResponse, FuzzReadSCGIResponse, FuzzEncodeDecodeString, 30s each
+make ci                # gofmt check, build, vet, race tests, mod tidy check, govulncheck
 ```
+
+`make test-integration` launches a real rTorrent 0.16.21 in Docker
+(testcontainers-go) and needs Docker + network access, so it's kept out of
+`make test` and the default CI workflow.
