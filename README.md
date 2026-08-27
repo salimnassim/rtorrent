@@ -80,3 +80,7 @@ make ci                # gofmt check, build, vet, race tests, mod tidy check, go
 `make test-integration` launches a real rTorrent 0.16.21 in Docker
 (testcontainers-go) and needs Docker + network access, so it's kept out of
 `make test` and the default CI workflow.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
