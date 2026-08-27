@@ -79,6 +79,8 @@ func writeSCGIHeader(buf *bytes.Buffer, key, value string) {
 	buf.WriteByte(0)
 }
 
+const maxSCGIResponseBytes = 8 << 20
+
 // readSCGIResponse reads an SCGI response from r: CGI-style "Header: value"
 // lines up to a blank line, then the body.
 func readSCGIResponse(r io.Reader) ([]byte, error) {
@@ -93,9 +95,12 @@ func readSCGIResponse(r io.Reader) ([]byte, error) {
 		}
 	}
 
-	respBody, err := io.ReadAll(br)
+	respBody, err := io.ReadAll(io.LimitReader(br, maxSCGIResponseBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)
+	}
+	if len(respBody) > maxSCGIResponseBytes {
+		return nil, fmt.Errorf("response body exceeds %d bytes", maxSCGIResponseBytes)
 	}
 	return respBody, nil
 }
