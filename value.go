@@ -120,7 +120,7 @@ func (v Value) AsInt64() (int64, error) {
 	}
 }
 
-// AsDouble returns v's value as a float64..
+// AsDouble returns v's value as a float64.
 func (v Value) AsDouble() (float64, error) {
 	switch v.kind {
 	case KindDouble:
