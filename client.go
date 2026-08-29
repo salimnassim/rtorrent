@@ -140,6 +140,84 @@ func (c *Client) SetCustom5(ctx context.Context, hash, value string) error {
 	return err
 }
 
+// Start starts the torrent identified by hash.
+func (c *Client) Start(ctx context.Context, hash string) error {
+	_, err := c.Call(ctx, "d.start", NewString(hash))
+	return err
+}
+
+// Stop stops the torrent identified by hash, announcing "stopped" to its
+// trackers and disconnecting its peers.
+func (c *Client) Stop(ctx context.Context, hash string) error {
+	_, err := c.Call(ctx, "d.stop", NewString(hash))
+	return err
+}
+
+// Pause pauses the torrent identified by hash without stopping it: peers
+// stay connected and no "stopped" event is sent to trackers. Use Stop for
+// a full stop.
+func (c *Client) Pause(ctx context.Context, hash string) error {
+	_, err := c.Call(ctx, "d.pause", NewString(hash))
+	return err
+}
+
+// Resume resumes a torrent identified by hash previously paused with Pause.
+func (c *Client) Resume(ctx context.Context, hash string) error {
+	_, err := c.Call(ctx, "d.resume", NewString(hash))
+	return err
+}
+
+// OpenTorrent opens the torrent identified by hash, allocating its files
+// on disk.
+func (c *Client) OpenTorrent(ctx context.Context, hash string) error {
+	_, err := c.Call(ctx, "d.open", NewString(hash))
+	return err
+}
+
+// CloseTorrent closes the torrent identified by hash, releasing its file
+// handles.
+func (c *Client) CloseTorrent(ctx context.Context, hash string) error {
+	_, err := c.Call(ctx, "d.close", NewString(hash))
+	return err
+}
+
+// Erase removes the torrent identified by hash from the session. It
+// does not delete the torrent's downloaded data from disk.
+func (c *Client) Erase(ctx context.Context, hash string) error {
+	_, err := c.Call(ctx, "d.erase", NewString(hash))
+	return err
+}
+
+// SetPriority sets the torrent identified by hash's priority: 0 (off),
+// 1 (low), 2 (normal), or 3 (high).
+func (c *Client) SetPriority(ctx context.Context, hash string, priority int64) error {
+	_, err := c.Call(ctx, "d.priority.set", NewString(hash), NewInt64(priority))
+	return err
+}
+
+// SetFilePriority sets the priority of the file at index (0-based, in the
+// order Files returns them) within the torrent identified by hash: 0 (off),
+// 1 (normal), or 2 (high).
+func (c *Client) SetFilePriority(ctx context.Context, hash string, index int, priority int64) error {
+	target := fmt.Sprintf("%s:f%d", hash, index)
+	_, err := c.Call(ctx, "f.priority.set", NewString(target), NewInt64(priority))
+	return err
+}
+
+// SetDirectory sets the torrent identified by hash's download directory
+// metadata. It does not move the torrent's files on disk.
+func (c *Client) SetDirectory(ctx context.Context, hash, path string) error {
+	_, err := c.Call(ctx, "d.directory.set", NewString(hash), NewString(path))
+	return err
+}
+
+// CheckHash triggers a hash check (rehash) of the torrent identified by
+// hash.
+func (c *Client) CheckHash(ctx context.Context, hash string) error {
+	_, err := c.Call(ctx, "d.check_hash", NewString(hash))
+	return err
+}
+
 // Multicall invokes an rTorrent multicall method (e.g. "d.multicall2",
 // "t.multicall", "p.multicall", "f.multicall") and returns one row of
 // Values per result, one column per command in cmds.

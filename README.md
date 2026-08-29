@@ -15,7 +15,9 @@ HTTP transport as a fallback for proxied setups.
 - `http.go` `httpTransport`: for proxy setups.
 - `client.go` `Client`, `Dial`/`DialUnix`/`DialHTTP`, `Call`, `Multicall`,
   `multicallRows`, `LoadRaw`/`LoadRawStart`/`LoadStart`,
-  `SetCustom1`-`SetCustom5`, `Option`s (`WithTimeout`, `WithBasicAuth`).
+  `SetCustom1`-`SetCustom5`, `Start`/`Stop`/`Pause`/`Resume`/
+  `OpenTorrent`/`CloseTorrent`/`Erase`, `SetPriority`/`SetFilePriority`,
+  `SetDirectory`/`CheckHash`, `Option`s (`WithTimeout`, `WithBasicAuth`).
 - `torrent.go` `Torrent` model, `Client.Torrents`, `Client.TorrentsCustom`.
 - `peer.go` `Peer` model, `Client.Peers`, `Client.PeersCustom`.
 - `tracker.go` `Tracker` model, `Client.Trackers`, `Client.TrackersCustom`.
@@ -96,6 +98,23 @@ if err != nil {
 results, _ := v.AsArray()
 for _, r := range results {
 	fmt.Println(r)
+}
+```
+
+### Torrent control
+
+Lifecycle, priority, and directory/rehash actions are plain `Client`
+methods, each a thin wrapper over one `d.*`/`f.*` command:
+
+```go
+if err := client.Stop(ctx, hash); err != nil {
+	log.Fatal(err)
+}
+if err := client.SetPriority(ctx, hash, 3); err != nil { // 3 = high
+	log.Fatal(err)
+}
+if err := client.CheckHash(ctx, hash); err != nil {
+	log.Fatal(err)
 }
 ```
 

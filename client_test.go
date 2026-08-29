@@ -205,6 +205,120 @@ func TestClientSetCustom(t *testing.T) {
 	}
 }
 
+func TestClientTorrentAction(t *testing.T) {
+	const resp = `<?xml version="1.0"?><methodResponse><params><param><value><i4>0</i4></value></param></params></methodResponse>`
+
+	tests := []struct {
+		name       string
+		action     func(c *Client, ctx context.Context, hash string) error
+		wantMethod string
+	}{
+		{name: "Start", action: (*Client).Start, wantMethod: "d.start"},
+		{name: "Stop", action: (*Client).Stop, wantMethod: "d.stop"},
+		{name: "Pause", action: (*Client).Pause, wantMethod: "d.pause"},
+		{name: "Resume", action: (*Client).Resume, wantMethod: "d.resume"},
+		{name: "OpenTorrent", action: (*Client).OpenTorrent, wantMethod: "d.open"},
+		{name: "CloseTorrent", action: (*Client).CloseTorrent, wantMethod: "d.close"},
+		{name: "Erase", action: (*Client).Erase, wantMethod: "d.erase"},
+		{name: "CheckHash", action: (*Client).CheckHash, wantMethod: "d.check_hash"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotBody []byte
+			c := newClient(&stubTransport{
+				callFunc: func(ctx context.Context, body []byte) ([]byte, error) {
+					gotBody = body
+					return []byte(resp), nil
+				},
+			}, nil)
+
+			const hash = "0123456789ABCDEF0123456789ABCDEF01234567"
+			if err := tt.action(c, context.Background(), hash); err != nil {
+				t.Fatalf("%s() unexpected error: %v", tt.name, err)
+			}
+			if !bytes.Contains(gotBody, []byte("<methodName>"+tt.wantMethod+"</methodName>")) {
+				t.Errorf("%s() body = %s, want %s method call", tt.name, gotBody, tt.wantMethod)
+			}
+			if !bytes.Contains(gotBody, []byte("<string>"+hash+"</string>")) {
+				t.Errorf("%s() body = %s, want hash string", tt.name, gotBody)
+			}
+		})
+	}
+}
+
+func TestClientSetPriority(t *testing.T) {
+	const resp = `<?xml version="1.0"?><methodResponse><params><param><value><i4>0</i4></value></param></params></methodResponse>`
+
+	var gotBody []byte
+	c := newClient(&stubTransport{
+		callFunc: func(ctx context.Context, body []byte) ([]byte, error) {
+			gotBody = body
+			return []byte(resp), nil
+		},
+	}, nil)
+
+	if err := c.SetPriority(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567", 3); err != nil {
+		t.Fatalf("SetPriority() unexpected error: %v", err)
+	}
+	if !bytes.Contains(gotBody, []byte("<methodName>d.priority.set</methodName>")) {
+		t.Errorf("SetPriority() body = %s, want d.priority.set method call", gotBody)
+	}
+	if !bytes.Contains(gotBody, []byte("<string>0123456789ABCDEF0123456789ABCDEF01234567</string>")) {
+		t.Errorf("SetPriority() body = %s, want hash string", gotBody)
+	}
+	if !bytes.Contains(gotBody, []byte("<i8>3</i8>")) {
+		t.Errorf("SetPriority() body = %s, want priority value 3", gotBody)
+	}
+}
+
+func TestClientSetFilePriority(t *testing.T) {
+	const resp = `<?xml version="1.0"?><methodResponse><params><param><value><i4>0</i4></value></param></params></methodResponse>`
+
+	var gotBody []byte
+	c := newClient(&stubTransport{
+		callFunc: func(ctx context.Context, body []byte) ([]byte, error) {
+			gotBody = body
+			return []byte(resp), nil
+		},
+	}, nil)
+
+	if err := c.SetFilePriority(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567", 2, 1); err != nil {
+		t.Fatalf("SetFilePriority() unexpected error: %v", err)
+	}
+	if !bytes.Contains(gotBody, []byte("<methodName>f.priority.set</methodName>")) {
+		t.Errorf("SetFilePriority() body = %s, want f.priority.set method call", gotBody)
+	}
+	if !bytes.Contains(gotBody, []byte("<string>0123456789ABCDEF0123456789ABCDEF01234567:f2</string>")) {
+		t.Errorf("SetFilePriority() body = %s, want compound file target", gotBody)
+	}
+	if !bytes.Contains(gotBody, []byte("<i8>1</i8>")) {
+		t.Errorf("SetFilePriority() body = %s, want priority value 1", gotBody)
+	}
+}
+
+func TestClientSetDirectory(t *testing.T) {
+	const resp = `<?xml version="1.0"?><methodResponse><params><param><value><i4>0</i4></value></param></params></methodResponse>`
+
+	var gotBody []byte
+	c := newClient(&stubTransport{
+		callFunc: func(ctx context.Context, body []byte) ([]byte, error) {
+			gotBody = body
+			return []byte(resp), nil
+		},
+	}, nil)
+
+	if err := c.SetDirectory(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567", "/downloads/moved"); err != nil {
+		t.Fatalf("SetDirectory() unexpected error: %v", err)
+	}
+	if !bytes.Contains(gotBody, []byte("<methodName>d.directory.set</methodName>")) {
+		t.Errorf("SetDirectory() body = %s, want d.directory.set method call", gotBody)
+	}
+	if !bytes.Contains(gotBody, []byte("<string>/downloads/moved</string>")) {
+		t.Errorf("SetDirectory() body = %s, want path string", gotBody)
+	}
+}
+
 func TestClientDialHTTPWithBasicAuth(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, pass, ok := r.BasicAuth()
