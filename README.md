@@ -52,6 +52,70 @@ client := rtorrent.DialHTTP("https://example.com/RPC2",
 	rtorrent.WithBasicAuth("user", "pass"))
 ```
 
+### Multicall (d.multicall2)
+
+`Client.Multicall` drives any `d.*`/`t.*`/`p.*`/`f.*` multicall method
+directly, for cases `Torrents`/`Peers`/`Trackers`/`Files` don't cover:
+
+```go
+rows, err := client.Multicall(ctx, "d.multicall2",
+	[]rtorrent.Value{rtorrent.NewString(""), rtorrent.NewString("main")},
+	"d.hash=", "d.name=")
+if err != nil {
+	log.Fatal(err)
+}
+for _, row := range rows {
+	hash, _ := row[0].AsString()
+	name, _ := row[1].AsString()
+	fmt.Println(hash, name)
+}
+```
+
+### Batching calls (system.multicall)
+
+`system.multicall` batches unrelated method calls into a single round trip.
+Its request/response shape differs from `d.multicall2` (a struct per call
+rather than one row per torrent), so it's driven through `Call` directly:
+
+```go
+calls := rtorrent.NewArray([]rtorrent.Value{
+	rtorrent.NewStruct(map[string]rtorrent.Value{
+		"methodName": rtorrent.NewString("system.listMethods"),
+		"params":     rtorrent.NewArray(nil),
+	}),
+	rtorrent.NewStruct(map[string]rtorrent.Value{
+		"methodName": rtorrent.NewString("system.client_version"),
+		"params":     rtorrent.NewArray(nil),
+	}),
+})
+
+v, err := client.Call(ctx, "system.multicall", calls)
+if err != nil {
+	log.Fatal(err)
+}
+results, _ := v.AsArray()
+for _, r := range results {
+	fmt.Println(r)
+}
+```
+
+### Loading a torrent from raw bytes (load.raw)
+
+`LoadRaw` loads a torrent from its bencoded bytes directly, without writing
+a `.torrent` file to disk first:
+
+```go
+data, err := os.ReadFile("example.torrent")
+if err != nil {
+	log.Fatal(err)
+}
+if err := client.LoadRaw(ctx, data); err != nil {
+	log.Fatal(err)
+}
+```
+
+Use `LoadRawStart` instead to start the torrent immediately after loading.
+
 ## CLI
 
 `rtctl` is a minimal CLI for calling XML-RPC methods directly:
@@ -74,7 +138,7 @@ go run ./cmd -addr https://foo.bar.tld/RPC2 -user bob -password secret d.multica
 ```
 make test              # go test -v ./...
 make test-integration  # go test -tags=integration -v ./...
-make fuzz              # fuzz FuzzDecodeMethodResponse, FuzzReadSCGIResponse, FuzzEncodeDecodeString, 30s each
+make fuzz              # fuzz FuzzDecodeMethodResponse, FuzzReadSCGIResponse, FuzzEncodeDecodeString, FuzzEncodeDecodeBase64, 30s each
 make ci                # gofmt check, build, vet, race tests, mod tidy check, govulncheck
 ```
 
