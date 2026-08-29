@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// torrentColumns is the fixed list of d.* commands passed to d.multicall to
+// torrentColumns is the fixed list of d.* commands passed to d.multicall2 to
 // populate a Torrent, in the order Torrent's fields are read by
 // torrentFromRow.
 //
@@ -91,7 +91,7 @@ type Torrent struct {
 	Custom5 string
 }
 
-// torrentFromRow converts one d.multicall result row into a Torrent. Column
+// torrentFromRow converts one d.multicall2 result row into a Torrent. Column
 // order must match torrentColumns.
 func torrentFromRow(row []Value) (*Torrent, error) {
 	if len(row) != len(torrentColumns) {
@@ -191,7 +191,7 @@ func torrentFromRow(row []Value) (*Torrent, error) {
 	return &t, nil
 }
 
-// Torrents returns the torrents visible in view, populated via d.multicall.
+// Torrents returns the torrents visible in view, populated via d.multicall2.
 // An empty view means the "default" view.
 func (c *Client) Torrents(ctx context.Context, view string) ([]*Torrent, error) {
 	rows, err := c.TorrentsCustom(ctx, view, torrentColumns...)
@@ -210,9 +210,9 @@ func (c *Client) Torrents(ctx context.Context, view string) ([]*Torrent, error) 
 	return torrents, nil
 }
 
-// TorrentsCustom calls d.multicall against view with cmds, returning one raw
+// TorrentsCustom calls d.multicall2 against view with cmds, returning one raw
 // row of Values per torrent.
 func (c *Client) TorrentsCustom(ctx context.Context, view string, cmds ...string) ([][]Value, error) {
-	leading := []Value{NewString(""), NewString(view)}
-	return c.Multicall(ctx, "d.multicall", leading, cmds...)
+	leading := []Value{NewString(view)}
+	return c.Multicall(ctx, "d.multicall2", leading, cmds...)
 }
