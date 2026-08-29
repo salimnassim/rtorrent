@@ -359,6 +359,59 @@ func TestIntegration_SetFilePriority(t *testing.T) {
 	}
 }
 
+func TestIntegration_ExecuteCapture(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	out, err := client.ExecuteCapture(ctx, "echo", "-n", "integration")
+	if err != nil {
+		t.Fatalf("ExecuteCapture() error: %v", err)
+	}
+	if out != "integration" {
+		t.Errorf("ExecuteCapture() = %q, want %q", out, "integration")
+	}
+}
+
+func TestIntegration_ExecuteNothrow(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	status, err := client.ExecuteNothrow(ctx, "false")
+	if err != nil {
+		t.Fatalf("ExecuteNothrow(false) error: %v, want nil (nothrow must not fault on a failing command)", err)
+	}
+	if status == 0 {
+		t.Errorf("ExecuteNothrow(false) = %d, want non-zero exit status", status)
+	}
+}
+
+func TestIntegration_ExecuteThrow(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := client.ExecuteThrow(ctx, "true"); err != nil {
+		t.Errorf("ExecuteThrow(true) error: %v, want nil", err)
+	}
+
+	err := client.ExecuteThrow(ctx, "false")
+	if err == nil {
+		t.Fatal("ExecuteThrow(false) error = nil, want fault")
+	}
+	var fault *rtorrent.Fault
+	if !errors.As(err, &fault) {
+		t.Fatalf("errors.As(%v, *Fault) = false, want true", err)
+	}
+}
+
 func TestIntegration_FaultUnwraps(t *testing.T) {
 	addr := startRtorrent(t)
 	client := rtorrent.Dial(addr)
