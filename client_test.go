@@ -167,6 +167,44 @@ func TestClientLoadStart(t *testing.T) {
 	}
 }
 
+func TestClientSetCustom(t *testing.T) {
+	const resp = `<?xml version="1.0"?><methodResponse><params><param><value><i4>0</i4></value></param></params></methodResponse>`
+
+	tests := []struct {
+		name       string
+		setCustom  func(c *Client, ctx context.Context, hash, value string) error
+		wantMethod string
+	}{
+		{"SetCustom1", (*Client).SetCustom1, "d.custom1.set"},
+		{"SetCustom2", (*Client).SetCustom2, "d.custom2.set"},
+		{"SetCustom3", (*Client).SetCustom3, "d.custom3.set"},
+		{"SetCustom4", (*Client).SetCustom4, "d.custom4.set"},
+		{"SetCustom5", (*Client).SetCustom5, "d.custom5.set"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotBody []byte
+			c := newClient(&stubTransport{
+				callFunc: func(ctx context.Context, body []byte) ([]byte, error) {
+					gotBody = body
+					return []byte(resp), nil
+				},
+			}, nil)
+
+			if err := tt.setCustom(c, context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567", "movies"); err != nil {
+				t.Fatalf("%s() unexpected error: %v", tt.name, err)
+			}
+			if !bytes.Contains(gotBody, []byte("<methodName>"+tt.wantMethod+"</methodName>")) {
+				t.Errorf("%s() body = %s, want %s method call", tt.name, gotBody, tt.wantMethod)
+			}
+			if !bytes.Contains(gotBody, []byte("<string>movies</string>")) {
+				t.Errorf("%s() body = %s, want value string", tt.name, gotBody)
+			}
+		})
+	}
+}
+
 func TestClientDialHTTPWithBasicAuth(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, pass, ok := r.BasicAuth()

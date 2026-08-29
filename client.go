@@ -110,6 +110,36 @@ func (c *Client) LoadStart(ctx context.Context, path string) error {
 	return err
 }
 
+// SetCustom1 sets the torrent identified by hash's first custom field.
+func (c *Client) SetCustom1(ctx context.Context, hash, value string) error {
+	_, err := c.Call(ctx, "d.custom1.set", NewString(hash), NewString(value))
+	return err
+}
+
+// SetCustom2 sets the torrent identified by hash's second custom field.
+func (c *Client) SetCustom2(ctx context.Context, hash, value string) error {
+	_, err := c.Call(ctx, "d.custom2.set", NewString(hash), NewString(value))
+	return err
+}
+
+// SetCustom3 sets the torrent identified by hash's third custom field.
+func (c *Client) SetCustom3(ctx context.Context, hash, value string) error {
+	_, err := c.Call(ctx, "d.custom3.set", NewString(hash), NewString(value))
+	return err
+}
+
+// SetCustom4 sets the torrent identified by hash's fourth custom field.
+func (c *Client) SetCustom4(ctx context.Context, hash, value string) error {
+	_, err := c.Call(ctx, "d.custom4.set", NewString(hash), NewString(value))
+	return err
+}
+
+// SetCustom5 sets the torrent identified by hash's fifth custom field.
+func (c *Client) SetCustom5(ctx context.Context, hash, value string) error {
+	_, err := c.Call(ctx, "d.custom5.set", NewString(hash), NewString(value))
+	return err
+}
+
 // Multicall invokes an rTorrent multicall method (e.g. "d.multicall2",
 // "t.multicall", "p.multicall", "f.multicall") and returns one row of
 // Values per result, one column per command in cmds.

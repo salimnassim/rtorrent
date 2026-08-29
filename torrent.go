@@ -31,6 +31,11 @@ var torrentColumns = []string{
 	"d.base_path=",
 	"d.directory=",
 	"d.priority=",
+	"d.custom1=",
+	"d.custom2=",
+	"d.custom3=",
+	"d.custom4=",
+	"d.custom5=",
 }
 
 // Torrent is a snapshot of a download.
@@ -74,6 +79,16 @@ type Torrent struct {
 	Directory string
 	// Priority is 0 (off), 1 (low), 2 (normal), or 3 (high).
 	Priority int64
+	// Custom1 is the torrent's first custom field (commonly used as a label).
+	Custom1 string
+	// Custom2 is the torrent's second custom field.
+	Custom2 string
+	// Custom3 is the torrent's third custom field.
+	Custom3 string
+	// Custom4 is the torrent's fourth custom field.
+	Custom4 string
+	// Custom5 is the torrent's fifth custom field.
+	Custom5 string
 }
 
 // torrentFromRow converts one d.multicall result row into a Torrent. Column
@@ -156,6 +171,21 @@ func torrentFromRow(row []Value) (*Torrent, error) {
 	}
 	if t.Priority, err = row[18].AsInt64(); err != nil {
 		return nil, fmt.Errorf("rtorrent: torrent row: priority: %w", err)
+	}
+	if t.Custom1, err = row[19].AsString(); err != nil {
+		return nil, fmt.Errorf("rtorrent: torrent row: custom1: %w", err)
+	}
+	if t.Custom2, err = row[20].AsString(); err != nil {
+		return nil, fmt.Errorf("rtorrent: torrent row: custom2: %w", err)
+	}
+	if t.Custom3, err = row[21].AsString(); err != nil {
+		return nil, fmt.Errorf("rtorrent: torrent row: custom3: %w", err)
+	}
+	if t.Custom4, err = row[22].AsString(); err != nil {
+		return nil, fmt.Errorf("rtorrent: torrent row: custom4: %w", err)
+	}
+	if t.Custom5, err = row[23].AsString(); err != nil {
+		return nil, fmt.Errorf("rtorrent: torrent row: custom5: %w", err)
 	}
 
 	return &t, nil
