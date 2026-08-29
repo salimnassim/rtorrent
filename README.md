@@ -22,6 +22,7 @@ HTTP transport as a fallback for proxied setups.
 - `peer.go` `Peer` model, `Client.Peers`, `Client.PeersCustom`.
 - `tracker.go` `Tracker` model, `Client.Trackers`, `Client.TrackersCustom`.
 - `file.go` `File` model, `Client.Files`, `Client.FilesCustom`.
+- `execute.go` `Client.ExecuteThrow`/`ExecuteNothrow`/`ExecuteCapture`.
 - `cmd/rtctl.go` `rtctl`, a minimal CLI for calling XML-RPC methods directly.
 
 ## Install
@@ -116,6 +117,28 @@ if err := client.SetPriority(ctx, hash, 3); err != nil { // 3 = high
 if err := client.CheckHash(ctx, hash); err != nil {
 	log.Fatal(err)
 }
+```
+
+### Running commands (execute)
+
+`ExecuteThrow` runs an external command, returning an error
+(a `*Fault`) if it exits non-zero. `ExecuteNothrow` never
+faults on a failing command, it returns the exit status directly.
+`ExecuteCapture` runs a command and returns its captured stdout, faulting
+on a non-zero exit.
+
+```go
+out, err := client.ExecuteCapture(ctx, "echo", "-n", "hello")
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(out) // "hello"
+
+status, err := client.ExecuteNothrow(ctx, "some-script.sh")
+if err != nil {
+	log.Fatal(err) // only a transport/decode error, not a nonzero exit
+}
+fmt.Println("exit status:", status)
 ```
 
 ### Loading a torrent from raw bytes (load.raw)
