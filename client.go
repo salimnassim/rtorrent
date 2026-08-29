@@ -96,6 +96,20 @@ func (c *Client) LoadRaw(ctx context.Context, data []byte) error {
 	return err
 }
 
+// LoadRawStart loads a torrent directly from its raw bencoded structure and
+// starts it immediately.
+func (c *Client) LoadRawStart(ctx context.Context, data []byte) error {
+	_, err := c.Call(ctx, "load.raw_start", NewString(""), NewBase64(data))
+	return err
+}
+
+// LoadStart loads a torrent from a filesystem path (or URL) by
+// and starts it immediately.
+func (c *Client) LoadStart(ctx context.Context, path string) error {
+	_, err := c.Call(ctx, "load.start", NewString(""), NewString(path))
+	return err
+}
+
 // Multicall invokes an rTorrent multicall method (e.g. "d.multicall2",
 // "t.multicall", "p.multicall", "f.multicall") and returns one row of
 // Values per result, one column per command in cmds.
