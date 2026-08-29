@@ -175,11 +175,11 @@ func TestClientSetCustom(t *testing.T) {
 		setCustom  func(c *Client, ctx context.Context, hash, value string) error
 		wantMethod string
 	}{
-		{"SetCustom1", (*Client).SetCustom1, "d.custom1.set"},
-		{"SetCustom2", (*Client).SetCustom2, "d.custom2.set"},
-		{"SetCustom3", (*Client).SetCustom3, "d.custom3.set"},
-		{"SetCustom4", (*Client).SetCustom4, "d.custom4.set"},
-		{"SetCustom5", (*Client).SetCustom5, "d.custom5.set"},
+		{name: "SetCustom1", setCustom: (*Client).SetCustom1, wantMethod: "d.custom1.set"},
+		{name: "SetCustom2", setCustom: (*Client).SetCustom2, wantMethod: "d.custom2.set"},
+		{name: "SetCustom3", setCustom: (*Client).SetCustom3, wantMethod: "d.custom3.set"},
+		{name: "SetCustom4", setCustom: (*Client).SetCustom4, wantMethod: "d.custom4.set"},
+		{name: "SetCustom5", setCustom: (*Client).SetCustom5, wantMethod: "d.custom5.set"},
 	}
 
 	for _, tt := range tests {
