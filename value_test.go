@@ -1,6 +1,7 @@
 package rtorrent
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
@@ -168,6 +169,37 @@ func TestValueAsStruct(t *testing.T) {
 	}
 }
 
+func TestValueAsBase64(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   Value
+		want    []byte
+		wantErr bool
+	}{
+		{name: "bytes", value: NewBase64([]byte{0x00, 0x01, 0xff}), want: []byte{0x00, 0x01, 0xff}},
+		{name: "empty", value: NewBase64(nil), want: nil},
+		{name: "wrong kind", value: NewString("foo"), wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.value.AsBase64()
+			if tt.wantErr {
+				if !errors.Is(err, ErrKind) {
+					t.Errorf("AsBase64() error = %v, want error wrapping ErrKind", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("AsBase64() unexpected error: %v", err)
+			}
+			if !bytes.Equal(got, tt.want) {
+				t.Errorf("AsBase64() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestKindString(t *testing.T) {
 	tests := []struct {
 		kind Kind
@@ -181,6 +213,7 @@ func TestKindString(t *testing.T) {
 		{KindArray, "array"},
 		{KindStruct, "struct"},
 		{KindNil, "nil"},
+		{KindBase64, "base64"},
 		{Kind(99), "Kind(99)"},
 	}
 

@@ -28,6 +28,8 @@ func TestEncodeValue(t *testing.T) {
 		{name: "bool true", value: NewBool(true), want: "<value><boolean>1</boolean></value>"},
 		{name: "bool false", value: NewBool(false), want: "<value><boolean>0</boolean></value>"},
 		{name: "nil", value: NewNil(), want: "<value><nil/></value>"},
+		{name: "base64", value: NewBase64([]byte("hi")), want: "<value><base64>aGk=</base64></value>"},
+		{name: "empty base64", value: NewBase64(nil), want: "<value><base64></base64></value>"},
 		{
 			name:  "empty array",
 			value: NewArray(nil),
@@ -121,6 +123,39 @@ func FuzzEncodeDecodeString(f *testing.F) {
 		}
 		if gotStr != s {
 			t.Errorf("round trip through encodeValue/decodeMethodResponse = %q, want %q", gotStr, s)
+		}
+	})
+}
+
+func FuzzEncodeDecodeBase64(f *testing.F) {
+	seeds := [][]byte{
+		{},
+		[]byte("hello"),
+		{0x00},
+		{0x00, 0x01, 0xff},
+		[]byte("unicode ☃"),
+	}
+	for _, s := range seeds {
+		f.Add(s)
+	}
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var buf bytes.Buffer
+		buf.WriteString("<methodResponse><params><param>")
+		encodeValue(&buf, NewBase64(data))
+		buf.WriteString("</param></params></methodResponse>")
+
+		got, err := decodeMethodResponse(buf.Bytes())
+		if err != nil {
+			return
+		}
+
+		gotBytes, err := got.AsBase64()
+		if err != nil {
+			t.Fatalf("decodeMethodResponse() returned non-base64 value: %v", err)
+		}
+		if !bytes.Equal(gotBytes, data) {
+			t.Errorf("round trip through encodeValue/decodeMethodResponse = %v, want %v", gotBytes, data)
 		}
 	})
 }

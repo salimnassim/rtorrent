@@ -2,6 +2,7 @@ package rtorrent
 
 import (
 	"bytes"
+	"encoding/base64"
 	"sort"
 	"strconv"
 	"strings"
@@ -89,6 +90,11 @@ func encodeValue(buf *bytes.Buffer, v Value) {
 			buf.WriteString("</member>")
 		}
 		buf.WriteString("</struct>")
+
+	case KindBase64:
+		buf.WriteString("<base64>")
+		buf.WriteString(base64.StdEncoding.EncodeToString([]byte(v.str)))
+		buf.WriteString("</base64>")
 	}
 
 	buf.WriteString("</value>")

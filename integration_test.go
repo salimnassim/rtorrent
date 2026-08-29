@@ -5,6 +5,7 @@ package rtorrent_test
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -79,6 +80,32 @@ func loadFake(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 		t.Fatalf("Call(load.normal) error: %v", err)
 	}
 
+	return waitForFake(t, client)
+}
+
+func loadFakeRaw(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	data, err := os.ReadFile("testdata/fake.torrent")
+	if err != nil {
+		t.Fatalf("ReadFile(testdata/fake.torrent) error: %v", err)
+	}
+	if err := client.LoadRaw(ctx, data); err != nil {
+		t.Fatalf("LoadRaw() error: %v", err)
+	}
+
+	return waitForFake(t, client)
+}
+
+func waitForFake(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		torrents, err := client.Torrents(ctx, "main")
@@ -100,6 +127,23 @@ func TestIntegration_LoadAndTorrents(t *testing.T) {
 	client := rtorrent.Dial(addr)
 
 	got := loadFake(t, client)
+
+	if len(got.Hash) != 40 {
+		t.Errorf("Torrent.Hash = %q, want 40 hex characters", got.Hash)
+	}
+	if got.Name != "fixture.txt" {
+		t.Errorf("Torrent.Name = %q, want %q", got.Name, "fixture.txt")
+	}
+	if got.SizeBytes != 16 {
+		t.Errorf("Torrent.SizeBytes = %d, want 16", got.SizeBytes)
+	}
+}
+
+func TestIntegration_LoadRawAndTorrents(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	got := loadFakeRaw(t, client)
 
 	if len(got.Hash) != 40 {
 		t.Errorf("Torrent.Hash = %q, want 40 hex characters", got.Hash)

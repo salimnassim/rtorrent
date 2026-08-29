@@ -78,6 +78,11 @@ func TestDecodeMethodResponse(t *testing.T) {
 			want: NewStruct(map[string]Value{"": NewInt(5)}),
 		},
 		{
+			name: "base64",
+			xml:  `<methodResponse><params><param><value><base64>aGk=</base64></value></param></params></methodResponse>`,
+			want: NewBase64([]byte("hi")),
+		},
+		{
 			name: "unrecognized scalar tag degrades to string",
 			xml: `<methodResponse><params><param><value>` +
 				`<dateTime.iso8601>20260826T00:00:00</dateTime.iso8601>` +
@@ -155,6 +160,7 @@ func FuzzDecodeMethodResponse(f *testing.F) {
 		`<methodResponse><params><param><value><boolean>1</boolean></value></param></params></methodResponse>`,
 		`<methodResponse><params><param><value><boolean>0</boolean></value></param></params></methodResponse>`,
 		`<methodResponse><params><param><value><nil/></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><base64>aGk=</base64></value></param></params></methodResponse>`,
 		`<methodResponse><params><param><value><array><data>` +
 			`<value><i4>1</i4></value><value><i4>2</i4></value>` +
 			`</data></array></value></param></params></methodResponse>`,

@@ -17,6 +17,7 @@ const (
 	KindArray
 	KindStruct
 	KindNil
+	KindBase64
 )
 
 // String returns the name of k.
@@ -38,6 +39,8 @@ func (k Kind) String() string {
 		return "struct"
 	case KindNil:
 		return "nil"
+	case KindBase64:
+		return "base64"
 	default:
 		return fmt.Sprintf("Kind(%d)", int(k))
 	}
@@ -97,6 +100,11 @@ func NewNil() Value {
 	return Value{kind: KindNil}
 }
 
+// NewBase64 returns a Value of Kind KindBase64 wrapping data.
+func NewBase64(data []byte) Value {
+	return Value{kind: KindBase64, str: string(data)}
+}
+
 // Kind returns the Kind of v.
 func (v Value) Kind() Kind {
 	return v.kind
@@ -154,4 +162,12 @@ func (v Value) AsStruct() (map[string]Value, error) {
 		return nil, fmt.Errorf("%w: want %s, have %s", ErrKind, KindStruct, v.kind)
 	}
 	return v.strct, nil
+}
+
+// AsBase64 returns v's raw byte value.
+func (v Value) AsBase64() ([]byte, error) {
+	if v.kind != KindBase64 {
+		return nil, fmt.Errorf("%w: want %s, have %s", ErrKind, KindBase64, v.kind)
+	}
+	return []byte(v.str), nil
 }
