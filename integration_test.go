@@ -152,6 +152,26 @@ func waitForFake(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 	return nil
 }
 
+func mustTorrent(t *testing.T, client *rtorrent.Client, hash string) *rtorrent.Torrent {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	torrents, err := client.Torrents(ctx, "main")
+	if err != nil {
+		t.Fatalf("Torrents() error: %v", err)
+	}
+	for _, tr := range torrents {
+		if tr.Hash == hash {
+			return tr
+		}
+	}
+
+	t.Fatalf("torrent %q not found in \"main\" view", hash)
+	return nil
+}
+
 func TestIntegration_LoadAndTorrents(t *testing.T) {
 	addr := startRtorrent(t)
 	client := rtorrent.Dial(addr)
@@ -241,6 +261,101 @@ func TestIntegration_FileMulticall(t *testing.T) {
 	}
 	if files[0].SizeBytes != 16 {
 		t.Errorf("File.SizeBytes = %d, want 16", files[0].SizeBytes)
+	}
+}
+
+func TestIntegration_TorrentLifecycle(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	torrent := loadFake(t, client)
+	hash := torrent.Hash
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := client.Start(ctx, hash); err != nil {
+		t.Fatalf("Start(%q) error: %v", hash, err)
+	}
+	if got := mustTorrent(t, client, hash); !got.IsActive {
+		t.Error("Torrent.IsActive = false after Start, want true")
+	}
+
+	if err := client.Stop(ctx, hash); err != nil {
+		t.Fatalf("Stop(%q) error: %v", hash, err)
+	}
+	if got := mustTorrent(t, client, hash); got.IsActive {
+		t.Error("Torrent.IsActive = true after Stop, want false")
+	}
+
+	if err := client.Pause(ctx, hash); err != nil {
+		t.Fatalf("Pause(%q) error: %v", hash, err)
+	}
+	if err := client.Resume(ctx, hash); err != nil {
+		t.Fatalf("Resume(%q) error: %v", hash, err)
+	}
+
+	if err := client.OpenTorrent(ctx, hash); err != nil {
+		t.Fatalf("OpenTorrent(%q) error: %v", hash, err)
+	}
+	if err := client.CloseTorrent(ctx, hash); err != nil {
+		t.Fatalf("CloseTorrent(%q) error: %v", hash, err)
+	}
+
+	if err := client.SetPriority(ctx, hash, 3); err != nil {
+		t.Fatalf("SetPriority(%q, 3) error: %v", hash, err)
+	}
+	if got := mustTorrent(t, client, hash); got.Priority != 3 {
+		t.Errorf("Torrent.Priority = %d after SetPriority(3), want 3", got.Priority)
+	}
+
+	if err := client.SetDirectory(ctx, hash, "/downloads"); err != nil {
+		t.Fatalf("SetDirectory(%q, /downloads) error: %v", hash, err)
+	}
+	if got := mustTorrent(t, client, hash); got.Directory != "/downloads" {
+		t.Errorf("Torrent.Directory = %q after SetDirectory, want %q", got.Directory, "/downloads")
+	}
+
+	if err := client.CheckHash(ctx, hash); err != nil {
+		t.Fatalf("CheckHash(%q) error: %v", hash, err)
+	}
+
+	if err := client.Erase(ctx, hash); err != nil {
+		t.Fatalf("Erase(%q) error: %v", hash, err)
+	}
+	torrents, err := client.Torrents(ctx, "main")
+	if err != nil {
+		t.Fatalf("Torrents() error: %v", err)
+	}
+	for _, tr := range torrents {
+		if tr.Hash == hash {
+			t.Errorf("torrent %q still present in \"main\" view after Erase", hash)
+		}
+	}
+}
+
+func TestIntegration_SetFilePriority(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	torrent := loadFake(t, client)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := client.SetFilePriority(ctx, torrent.Hash, 0, 2); err != nil {
+		t.Fatalf("SetFilePriority(%q, 0, 2) error: %v", torrent.Hash, err)
+	}
+
+	files, err := client.Files(ctx, torrent.Hash)
+	if err != nil {
+		t.Fatalf("Files(%q) error: %v", torrent.Hash, err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("Files(%q) returned %d files, want 1", torrent.Hash, len(files))
+	}
+	if files[0].Priority != 2 {
+		t.Errorf("File.Priority = %d after SetFilePriority(2), want 2", files[0].Priority)
 	}
 }
 
