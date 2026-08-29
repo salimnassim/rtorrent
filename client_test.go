@@ -336,6 +336,15 @@ func TestClientDialHTTPWithBasicAuth(t *testing.T) {
 	}
 }
 
+func TestWithBasicAuthPanicsOnNonHTTPTransport(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("Dial(WithBasicAuth) did not panic, want panic")
+		}
+	}()
+	Dial("127.0.0.1:5000", WithBasicAuth("user", "pass"))
+}
+
 func TestClientMulticallRows(t *testing.T) {
 	const resp = `<?xml version="1.0"?><methodResponse><params><param><value><array><data>` +
 		`<value><array><data><value><string>hash1</string></value><value><string>name1</string></value></data></array></value>` +
@@ -393,5 +402,14 @@ func TestClientMulticallNotAnArray(t *testing.T) {
 	_, err := c.Multicall(context.Background(), "d.multicall2", []Value{NewString(""), NewString("main")}, "d.hash=")
 	if err == nil {
 		t.Fatal("Multicall() error = nil, want error for non-array response")
+	}
+}
+
+func TestClientClose(t *testing.T) {
+	if err := DialHTTP("https://example.com/RPC2").Close(); err != nil {
+		t.Errorf("Close() on an HTTP client = %v, want nil", err)
+	}
+	if err := Dial("127.0.0.1:5000").Close(); err != nil {
+		t.Errorf("Close() on an SCGI client = %v, want nil", err)
 	}
 }

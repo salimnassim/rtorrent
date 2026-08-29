@@ -26,12 +26,16 @@ func WithTimeout(d time.Duration) Option {
 
 // WithBasicAuth sets HTTP Basic Auth credentials on requests made by a
 // Client constructed with DialHTTP.
+//
+// It panics if applied to a Client constructed with Dial or DialUnix.
 func WithBasicAuth(username, password string) Option {
 	return func(c *Client) {
-		if t, ok := c.t.(*httpTransport); ok {
-			t.username = username
-			t.password = password
+		t, ok := c.t.(*httpTransport)
+		if !ok {
+			panic("rtorrent: WithBasicAuth used with a non-HTTP transport (Dial/DialUnix); it only applies to DialHTTP")
 		}
+		t.username = username
+		t.password = password
 	}
 }
 
@@ -62,8 +66,12 @@ func newClient(t transport, opts []Option) *Client {
 	return c
 }
 
-// Close releases resources held by Client.
+// Close releases resources held by Client. For a Client constructed with
+// DialHTTP, it closes idle HTTP connections.
 func (c *Client) Close() error {
+	if t, ok := c.t.(*httpTransport); ok {
+		t.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
