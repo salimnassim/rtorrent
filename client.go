@@ -103,8 +103,8 @@ func (c *Client) LoadRawStart(ctx context.Context, data []byte) error {
 	return err
 }
 
-// LoadStart loads a torrent from a filesystem path (or URL) by
-// and starts it immediately.
+// LoadStart loads a torrent from a filesystem path or URL and starts it
+// immediately.
 func (c *Client) LoadStart(ctx context.Context, path string) error {
 	_, err := c.Call(ctx, "load.start", NewString(""), NewString(path))
 	return err
