@@ -213,6 +213,6 @@ func (c *Client) Torrents(ctx context.Context, view string) ([]*Torrent, error) 
 // TorrentsCustom calls d.multicall2 against view with cmds, returning one raw
 // row of Values per torrent.
 func (c *Client) TorrentsCustom(ctx context.Context, view string, cmds ...string) ([][]Value, error) {
-	leading := []Value{NewString(view)}
+	leading := []Value{NewString(""), NewString(view)}
 	return c.Multicall(ctx, "d.multicall2", leading, cmds...)
 }
