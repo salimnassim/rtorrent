@@ -2,6 +2,7 @@ package rtorrent
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/xml"
 	"fmt"
 	"strconv"
@@ -217,6 +218,17 @@ func (p *rpcParser) parseTypedValue(se xml.StartElement) (Value, error) {
 			return Value{}, err
 		}
 		return NewNil(), nil
+
+	case "base64":
+		s, err := p.readText(name)
+		if err != nil {
+			return Value{}, err
+		}
+		data, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
+		if err != nil {
+			return Value{}, fmt.Errorf("decode xml-rpc: invalid base64 value: %w", err)
+		}
+		return NewBase64(data), nil
 
 	case "array":
 		return p.parseArray()
