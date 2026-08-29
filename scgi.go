@@ -9,7 +9,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // scgiTransport sends XML-RPC requests directly to the SCGI listener.
@@ -17,17 +16,10 @@ type scgiTransport struct {
 	// network is "tcp" or "unix".
 	network string
 	address string
-	timeout time.Duration
 }
 
 // call implements transport.
 func (s *scgiTransport) call(ctx context.Context, body []byte) ([]byte, error) {
-	if _, ok := ctx.Deadline(); !ok && s.timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, s.timeout)
-		defer cancel()
-	}
-
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, s.network, s.address)
 	if err != nil {

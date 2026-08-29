@@ -173,7 +173,7 @@ func TestSCGITransportCallSuccessTCP(t *testing.T) {
 		respondSCGI(conn, "<methodResponse/>")
 	})
 
-	s := &scgiTransport{network: "tcp", address: addr, timeout: 5 * time.Second}
+	s := &scgiTransport{network: "tcp", address: addr}
 	got, err := s.call(context.Background(), []byte("request"))
 	if err != nil {
 		t.Fatalf("call() unexpected error: %v", err)
@@ -189,7 +189,7 @@ func TestSCGITransportCallSuccessUnix(t *testing.T) {
 		respondSCGI(conn, "<methodResponse/>")
 	})
 
-	s := &scgiTransport{network: "unix", address: addr, timeout: 5 * time.Second}
+	s := &scgiTransport{network: "unix", address: addr}
 	got, err := s.call(context.Background(), []byte("request"))
 	if err != nil {
 		t.Fatalf("call() unexpected error: %v", err)
@@ -200,7 +200,7 @@ func TestSCGITransportCallSuccessUnix(t *testing.T) {
 }
 
 func TestSCGITransportCallDialCanceled(t *testing.T) {
-	s := &scgiTransport{network: "tcp", address: "127.0.0.1:0", timeout: 5 * time.Second}
+	s := &scgiTransport{network: "tcp", address: "127.0.0.1:0"}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -237,28 +237,5 @@ func TestSCGITransportCallReadCanceled(t *testing.T) {
 	}
 	if elapsed > 2*time.Second {
 		t.Errorf("call() took %v, want it to abort promptly on ctx deadline", elapsed)
-	}
-}
-
-func TestSCGITransportCallTimeoutFallback(t *testing.T) {
-	unblock := make(chan struct{})
-	addr := scgiFakeServer(t, "tcp", "127.0.0.1:0", func(conn net.Conn) {
-		defer conn.Close()
-		io.Copy(io.Discard, conn)
-		<-unblock
-	})
-	t.Cleanup(func() { close(unblock) })
-
-	s := &scgiTransport{network: "tcp", address: addr, timeout: 100 * time.Millisecond}
-
-	start := time.Now()
-	_, err := s.call(context.Background(), []byte("request"))
-	elapsed := time.Since(start)
-
-	if err == nil {
-		t.Fatal("call() error = nil, want timeout error")
-	}
-	if elapsed > 2*time.Second {
-		t.Errorf("call() took %v, want it to abort promptly on the fallback timeout", elapsed)
 	}
 }
