@@ -27,6 +27,11 @@ func TestClientTorrentsEndToEnd(t *testing.T) {
 		`<value><string>/data/ubuntu.iso</string></value>` + // d.base_path=
 		`<value><string>/data</string></value>` + // d.directory=
 		`<value><i8>2</i8></value>` + // d.priority=
+		`<value><string>movies</string></value>` + // d.custom1=
+		`<value><string></string></value>` + // d.custom2=
+		`<value><string></string></value>` + // d.custom3=
+		`<value><string></string></value>` + // d.custom4=
+		`<value><string></string></value>` + // d.custom5=
 		`</data></array></value>` +
 		`</data></array></value></param></params></methodResponse>`
 
@@ -65,6 +70,7 @@ func TestClientTorrentsEndToEnd(t *testing.T) {
 		BasePath:       "/data/ubuntu.iso",
 		Directory:      "/data",
 		Priority:       2,
+		Custom1:        "movies",
 	}
 
 	if *got != *want {
