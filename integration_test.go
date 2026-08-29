@@ -100,6 +100,36 @@ func loadFakeRaw(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 	return waitForFake(t, client)
 }
 
+func loadFakeStart(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := client.LoadStart(ctx, "/downloads/fake.torrent"); err != nil {
+		t.Fatalf("LoadStart() error: %v", err)
+	}
+
+	return waitForFake(t, client)
+}
+
+func loadFakeRawStart(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	data, err := os.ReadFile("testdata/fake.torrent")
+	if err != nil {
+		t.Fatalf("ReadFile(testdata/fake.torrent) error: %v", err)
+	}
+	if err := client.LoadRawStart(ctx, data); err != nil {
+		t.Fatalf("LoadRawStart() error: %v", err)
+	}
+
+	return waitForFake(t, client)
+}
+
 func waitForFake(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 	t.Helper()
 
@@ -153,6 +183,40 @@ func TestIntegration_LoadRawAndTorrents(t *testing.T) {
 	}
 	if got.SizeBytes != 16 {
 		t.Errorf("Torrent.SizeBytes = %d, want 16", got.SizeBytes)
+	}
+}
+
+func TestIntegration_LoadStartAndTorrents(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	got := loadFakeStart(t, client)
+
+	if len(got.Hash) != 40 {
+		t.Errorf("Torrent.Hash = %q, want 40 hex characters", got.Hash)
+	}
+	if got.Name != "fixture.txt" {
+		t.Errorf("Torrent.Name = %q, want %q", got.Name, "fixture.txt")
+	}
+	if !got.IsActive {
+		t.Error("Torrent.IsActive = false, want true after load.start")
+	}
+}
+
+func TestIntegration_LoadRawStartAndTorrents(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	got := loadFakeRawStart(t, client)
+
+	if len(got.Hash) != 40 {
+		t.Errorf("Torrent.Hash = %q, want 40 hex characters", got.Hash)
+	}
+	if got.Name != "fixture.txt" {
+		t.Errorf("Torrent.Name = %q, want %q", got.Name, "fixture.txt")
+	}
+	if !got.IsActive {
+		t.Error("Torrent.IsActive = false, want true after load.raw_start")
 	}
 }
 

@@ -1,6 +1,7 @@
 package rtorrent
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -119,6 +120,50 @@ func TestClientCallTimeoutPrecedence(t *testing.T) {
 				t.Errorf("Call() took %v, want it to abort near %v", elapsed, tt.wantElapsed)
 			}
 		})
+	}
+}
+
+func TestClientLoadRawStart(t *testing.T) {
+	const resp = `<?xml version="1.0"?><methodResponse><params><param><value><i4>0</i4></value></param></params></methodResponse>`
+
+	var gotBody []byte
+	c := newClient(&stubTransport{
+		callFunc: func(ctx context.Context, body []byte) ([]byte, error) {
+			gotBody = body
+			return []byte(resp), nil
+		},
+	}, nil)
+
+	if err := c.LoadRawStart(context.Background(), []byte("d4:name4:fakee")); err != nil {
+		t.Fatalf("LoadRawStart() unexpected error: %v", err)
+	}
+	if !bytes.Contains(gotBody, []byte("<methodName>load.raw_start</methodName>")) {
+		t.Errorf("LoadRawStart() body = %s, want load.raw_start method call", gotBody)
+	}
+	if !bytes.Contains(gotBody, []byte("<base64>ZDQ6bmFtZTQ6ZmFrZWU=</base64>")) {
+		t.Errorf("LoadRawStart() body = %s, want base64-encoded data", gotBody)
+	}
+}
+
+func TestClientLoadStart(t *testing.T) {
+	const resp = `<?xml version="1.0"?><methodResponse><params><param><value><i4>0</i4></value></param></params></methodResponse>`
+
+	var gotBody []byte
+	c := newClient(&stubTransport{
+		callFunc: func(ctx context.Context, body []byte) ([]byte, error) {
+			gotBody = body
+			return []byte(resp), nil
+		},
+	}, nil)
+
+	if err := c.LoadStart(context.Background(), "/downloads/fake.torrent"); err != nil {
+		t.Fatalf("LoadStart() unexpected error: %v", err)
+	}
+	if !bytes.Contains(gotBody, []byte("<methodName>load.start</methodName>")) {
+		t.Errorf("LoadStart() body = %s, want load.start method call", gotBody)
+	}
+	if !bytes.Contains(gotBody, []byte("<string>/downloads/fake.torrent</string>")) {
+		t.Errorf("LoadStart() body = %s, want path string", gotBody)
 	}
 }
 

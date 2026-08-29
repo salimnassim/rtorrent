@@ -14,7 +14,8 @@ HTTP transport as a fallback for proxied setups.
 - `scgi.go` `scgiTransport`: TCP and Unix socket, direct to rTorrent.
 - `http.go` `httpTransport`: for proxy setups.
 - `client.go` `Client`, `Dial`/`DialUnix`/`DialHTTP`, `Call`, `Multicall`,
-  `multicallRows`, `Option`s (`WithTimeout`, `WithBasicAuth`).
+  `multicallRows`, `LoadRaw`/`LoadRawStart`/`LoadStart`, `Option`s
+  (`WithTimeout`, `WithBasicAuth`).
 - `torrent.go` `Torrent` model, `Client.Torrents`, `Client.TorrentsCustom`.
 - `peer.go` `Peer` model, `Client.Peers`, `Client.PeersCustom`.
 - `tracker.go` `Tracker` model, `Client.Trackers`, `Client.TrackersCustom`.
