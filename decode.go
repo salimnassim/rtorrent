@@ -1,9 +1,7 @@
 package rtorrent
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/xml"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,14 +11,14 @@ import (
 // returns its single return value. If the response is a <fault>, it
 // returns a *Fault as the error, reachable via errors.As.
 func decodeMethodResponse(data []byte) (Value, error) {
-	p := &rpcParser{dec: xml.NewDecoder(bytes.NewReader(data))}
+	p := &rpcParser{dec: newXMLScanner(data)}
 
 	se, err := p.nextStart()
 	if err != nil {
 		return Value{}, err
 	}
-	if se.Name.Local != "methodResponse" {
-		return Value{}, fmt.Errorf("decode xml-rpc: expected methodResponse element, got %q", se.Name.Local)
+	if se.name != "methodResponse" {
+		return Value{}, fmt.Errorf("decode xml-rpc: expected methodResponse element, got %q", se.name)
 	}
 
 	se, err = p.nextStart()
@@ -28,19 +26,19 @@ func decodeMethodResponse(data []byte) (Value, error) {
 		return Value{}, err
 	}
 
-	switch se.Name.Local {
+	switch se.name {
 	case "params":
 		if se, err = p.nextStart(); err != nil {
 			return Value{}, err
 		}
-		if se.Name.Local != "param" {
-			return Value{}, fmt.Errorf("decode xml-rpc: expected param element, got %q", se.Name.Local)
+		if se.name != "param" {
+			return Value{}, fmt.Errorf("decode xml-rpc: expected param element, got %q", se.name)
 		}
 		if se, err = p.nextStart(); err != nil {
 			return Value{}, err
 		}
-		if se.Name.Local != "value" {
-			return Value{}, fmt.Errorf("decode xml-rpc: expected value element, got %q", se.Name.Local)
+		if se.name != "value" {
+			return Value{}, fmt.Errorf("decode xml-rpc: expected value element, got %q", se.name)
 		}
 		return p.parseValue()
 
@@ -48,8 +46,8 @@ func decodeMethodResponse(data []byte) (Value, error) {
 		if se, err = p.nextStart(); err != nil {
 			return Value{}, err
 		}
-		if se.Name.Local != "value" {
-			return Value{}, fmt.Errorf("decode xml-rpc: expected value element in fault, got %q", se.Name.Local)
+		if se.name != "value" {
+			return Value{}, fmt.Errorf("decode xml-rpc: expected value element in fault, got %q", se.name)
 		}
 		v, err := p.parseValue()
 		if err != nil {
@@ -62,29 +60,26 @@ func decodeMethodResponse(data []byte) (Value, error) {
 		return Value{}, f
 
 	default:
-		return Value{}, fmt.Errorf("decode xml-rpc: expected params or fault element, got %q", se.Name.Local)
+		return Value{}, fmt.Errorf("decode xml-rpc: expected params or fault element, got %q", se.name)
 	}
 }
 
-// rpcParser is a hand-written recursive-descent parser over an
-// encoding/xml.Decoder token stream. encoding/xml is used only as a
-// tokenizer here: the XML-RPC value tree's shape depends on which tag is
-// encountered while descending, which xml.Unmarshal into tagged structs
-// handles awkwardly for a recursive tagged union like this one.
+// rpcParser is a ecursive-descent parser over an xmlScanner
+// token stream.
 type rpcParser struct {
-	dec *xml.Decoder
+	dec *xmlScanner
 }
 
 // nextStart advances past any non-element tokens and returns the next
 // start element.
-func (p *rpcParser) nextStart() (xml.StartElement, error) {
+func (p *rpcParser) nextStart() (xmlToken, error) {
 	for {
 		tok, err := p.dec.Token()
 		if err != nil {
-			return xml.StartElement{}, fmt.Errorf("decode xml-rpc: %w", err)
+			return xmlToken{}, fmt.Errorf("decode xml-rpc: %w", err)
 		}
-		if se, ok := tok.(xml.StartElement); ok {
-			return se, nil
+		if tok.kind == tokenStart {
+			return tok, nil
 		}
 	}
 }
@@ -96,8 +91,7 @@ func (p *rpcParser) expectEnd(name string) error {
 	if err != nil {
 		return fmt.Errorf("decode xml-rpc: %w", err)
 	}
-	end, ok := tok.(xml.EndElement)
-	if !ok || end.Name.Local != name {
+	if tok.kind != tokenEnd || tok.name != name {
 		return fmt.Errorf("decode xml-rpc: expected end element %q", name)
 	}
 	return nil
@@ -118,12 +112,12 @@ func (p *rpcParser) readText(name string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("decode xml-rpc: %w", err)
 		}
-		switch t := tok.(type) {
-		case xml.CharData:
-			sb.Write(t)
-		case xml.EndElement:
-			if t.Name.Local != name {
-				return "", fmt.Errorf("decode xml-rpc: expected end element %q, got %q", name, t.Name.Local)
+		switch tok.kind {
+		case tokenText:
+			sb.Write(tok.text)
+		case tokenEnd:
+			if tok.name != name {
+				return "", fmt.Errorf("decode xml-rpc: expected end element %q, got %q", name, tok.name)
 			}
 			return sb.String(), nil
 		}
@@ -139,9 +133,9 @@ func (p *rpcParser) parseValue() (Value, error) {
 		if err != nil {
 			return Value{}, fmt.Errorf("decode xml-rpc: %w", err)
 		}
-		switch t := tok.(type) {
-		case xml.StartElement:
-			v, err := p.parseTypedValue(t)
+		switch tok.kind {
+		case tokenStart:
+			v, err := p.parseTypedValue(tok)
 			if err != nil {
 				return Value{}, err
 			}
@@ -150,12 +144,12 @@ func (p *rpcParser) parseValue() (Value, error) {
 			}
 			return v, nil
 
-		case xml.EndElement:
+		case tokenEnd:
 			// <value></value> with no type tag: an empty untyped value.
 			return NewString(""), nil
 
-		case xml.CharData:
-			s := strings.TrimSpace(string(t))
+		case tokenText:
+			s := strings.TrimSpace(string(tok.text))
 			if s == "" {
 				continue
 			}
@@ -171,8 +165,8 @@ func (p *rpcParser) parseValue() (Value, error) {
 
 // parseTypedValue parses the element se as a typed XML-RPC value, consuming
 // through se's own end tag.
-func (p *rpcParser) parseTypedValue(se xml.StartElement) (Value, error) {
-	name := se.Name.Local
+func (p *rpcParser) parseTypedValue(se xmlToken) (Value, error) {
+	name := se.name
 
 	switch name {
 	case "string":
@@ -261,20 +255,20 @@ func (p *rpcParser) parseArray() (Value, error) {
 	if err != nil {
 		return Value{}, err
 	}
-	if se.Name.Local != "data" {
-		return Value{}, fmt.Errorf("decode xml-rpc: expected data element inside array, got %q", se.Name.Local)
+	if se.name != "data" {
+		return Value{}, fmt.Errorf("decode xml-rpc: expected data element inside array, got %q", se.name)
 	}
 
-	var elems []Value
+	elems := make([]Value, 0, 8)
 	for {
 		tok, err := p.dec.Token()
 		if err != nil {
 			return Value{}, fmt.Errorf("decode xml-rpc: %w", err)
 		}
-		switch t := tok.(type) {
-		case xml.StartElement:
-			if t.Name.Local != "value" {
-				return Value{}, fmt.Errorf("decode xml-rpc: unexpected element %q inside array data", t.Name.Local)
+		switch tok.kind {
+		case tokenStart:
+			if tok.name != "value" {
+				return Value{}, fmt.Errorf("decode xml-rpc: unexpected element %q inside array data", tok.name)
 			}
 			v, err := p.parseValue()
 			if err != nil {
@@ -282,9 +276,9 @@ func (p *rpcParser) parseArray() (Value, error) {
 			}
 			elems = append(elems, v)
 
-		case xml.EndElement:
-			if t.Name.Local != "data" {
-				return Value{}, fmt.Errorf("decode xml-rpc: expected end of data, got %q", t.Name.Local)
+		case tokenEnd:
+			if tok.name != "data" {
+				return Value{}, fmt.Errorf("decode xml-rpc: expected end of data, got %q", tok.name)
 			}
 			if err := p.expectEnd("array"); err != nil {
 				return Value{}, err
@@ -297,16 +291,16 @@ func (p *rpcParser) parseArray() (Value, error) {
 // parseStruct parses the content of a <struct> element, consuming through
 // its own end tag.
 func (p *rpcParser) parseStruct() (Value, error) {
-	members := make(map[string]Value)
+	members := make(map[string]Value, 8)
 	for {
 		tok, err := p.dec.Token()
 		if err != nil {
 			return Value{}, fmt.Errorf("decode xml-rpc: %w", err)
 		}
-		switch t := tok.(type) {
-		case xml.StartElement:
-			if t.Name.Local != "member" {
-				return Value{}, fmt.Errorf("decode xml-rpc: unexpected element %q inside struct", t.Name.Local)
+		switch tok.kind {
+		case tokenStart:
+			if tok.name != "member" {
+				return Value{}, fmt.Errorf("decode xml-rpc: unexpected element %q inside struct", tok.name)
 			}
 			name, value, err := p.parseMember()
 			if err != nil {
@@ -314,9 +308,9 @@ func (p *rpcParser) parseStruct() (Value, error) {
 			}
 			members[name] = value
 
-		case xml.EndElement:
-			if t.Name.Local != "struct" {
-				return Value{}, fmt.Errorf("decode xml-rpc: expected end of struct, got %q", t.Name.Local)
+		case tokenEnd:
+			if tok.name != "struct" {
+				return Value{}, fmt.Errorf("decode xml-rpc: expected end of struct, got %q", tok.name)
 			}
 			return NewStruct(members), nil
 		}
@@ -330,8 +324,8 @@ func (p *rpcParser) parseMember() (string, Value, error) {
 	if err != nil {
 		return "", Value{}, err
 	}
-	if se.Name.Local != "name" {
-		return "", Value{}, fmt.Errorf("decode xml-rpc: expected name element in struct member, got %q", se.Name.Local)
+	if se.name != "name" {
+		return "", Value{}, fmt.Errorf("decode xml-rpc: expected name element in struct member, got %q", se.name)
 	}
 	name, err := p.readText("name")
 	if err != nil {
@@ -341,8 +335,8 @@ func (p *rpcParser) parseMember() (string, Value, error) {
 	if se, err = p.nextStart(); err != nil {
 		return "", Value{}, err
 	}
-	if se.Name.Local != "value" {
-		return "", Value{}, fmt.Errorf("decode xml-rpc: expected value element in struct member, got %q", se.Name.Local)
+	if se.name != "value" {
+		return "", Value{}, fmt.Errorf("decode xml-rpc: expected value element in struct member, got %q", se.name)
 	}
 	value, err := p.parseValue()
 	if err != nil {
@@ -362,8 +356,8 @@ func (p *rpcParser) parseMember() (string, Value, error) {
 // scalar-like extensions). An unrecognized tag containing child elements
 // returns an explicit error instead of being read as a plausible-looking
 // but silently truncated or corrupted value.
-func (p *rpcParser) parseUnknown(se xml.StartElement) (Value, error) {
-	name := se.Name.Local
+func (p *rpcParser) parseUnknown(se xmlToken) (Value, error) {
+	name := se.name
 	depth := 0
 	hasChild := false
 	var text strings.Builder
@@ -373,12 +367,12 @@ func (p *rpcParser) parseUnknown(se xml.StartElement) (Value, error) {
 		if err != nil {
 			return Value{}, fmt.Errorf("decode xml-rpc: %w", err)
 		}
-		switch t := tok.(type) {
-		case xml.StartElement:
+		switch tok.kind {
+		case tokenStart:
 			hasChild = true
 			depth++
 
-		case xml.EndElement:
+		case tokenEnd:
 			if depth == 0 {
 				if hasChild {
 					return Value{}, fmt.Errorf("unsupported XML-RPC type %q", name)
@@ -387,9 +381,9 @@ func (p *rpcParser) parseUnknown(se xml.StartElement) (Value, error) {
 			}
 			depth--
 
-		case xml.CharData:
+		case tokenText:
 			if depth == 0 {
-				text.Write(t)
+				text.Write(tok.text)
 			}
 		}
 	}

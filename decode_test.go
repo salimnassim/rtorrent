@@ -96,6 +96,21 @@ func TestDecodeMethodResponse(t *testing.T) {
 				`</value></param></params></methodResponse>`,
 			wantErr: true,
 		},
+		{
+			name: "xml declaration prolog",
+			xml:  `<?xml version="1.0"?><methodResponse><params><param><value><string>hello</string></value></param></params></methodResponse>`,
+			want: NewString("hello"),
+		},
+		{
+			name: "empty untyped value",
+			xml:  `<methodResponse><params><param><value></value></param></params></methodResponse>`,
+			want: NewString(""),
+		},
+		{
+			name: "entity-escaped string",
+			xml:  `<methodResponse><params><param><value><string>a &amp; b &lt;c&gt; &quot;d&quot; &apos;e&apos; &#65;&#x42;</string></value></param></params></methodResponse>`,
+			want: NewString(`a & b <c> "d" 'e' AB`),
+		},
 	}
 
 	for _, tt := range tests {
@@ -182,6 +197,11 @@ func FuzzDecodeMethodResponse(f *testing.F) {
 			`<member><name>faultString</name><value><string>method not found</string></value></member>` +
 			`</struct></value></fault></methodResponse>`,
 		`<methodResponse><params><param><value><string>oops`,
+		`<?xml version="1.0"?><methodResponse><params><param><value><string>hello</string></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><string>a &amp; b &lt;c&gt; &quot;d&quot; &apos;e&apos; &#65;&#x42;</string></value></param></params></methodResponse>`,
+		`<!-- a comment --><methodResponse><params><param><value><string>hi</string></value></param></params></methodResponse>`,
+		`<methodResponse><params><param><value><string><![CDATA[raw & text]]></string></value></param></params></methodResponse>`,
 	}
 	for _, s := range seeds {
 		f.Add([]byte(s))
