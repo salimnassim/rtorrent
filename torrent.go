@@ -36,6 +36,7 @@ var torrentColumns = []string{
 	"d.custom3=",
 	"d.custom4=",
 	"d.custom5=",
+	"d.hashing=",
 }
 
 // Torrent is a snapshot of a download.
@@ -89,6 +90,12 @@ type Torrent struct {
 	Custom4 string
 	// Custom5 is the torrent's fifth custom field.
 	Custom5 string
+	// Hashing reports the torrent's hashing status:
+	// 0 (not hashing),
+	// 1 (initial hash check),
+	// 2 (hash check on download completion),
+	// 3 (rehash requested by the user).
+	Hashing int64
 }
 
 // torrentFromRow converts one d.multicall2 result row into a Torrent. Column
@@ -186,6 +193,9 @@ func torrentFromRow(row []Value) (*Torrent, error) {
 	}
 	if t.Custom5, err = row[23].AsString(); err != nil {
 		return nil, fmt.Errorf("rtorrent: torrent row: custom5: %w", err)
+	}
+	if t.Hashing, err = row[24].AsInt64(); err != nil {
+		return nil, fmt.Errorf("rtorrent: torrent row: hashing: %w", err)
 	}
 
 	return &t, nil
