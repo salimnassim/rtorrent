@@ -32,6 +32,7 @@ func TestClientTorrentsEndToEnd(t *testing.T) {
 		`<value><string></string></value>` + // d.custom3=
 		`<value><string></string></value>` + // d.custom4=
 		`<value><string></string></value>` + // d.custom5=
+		`<value><i8>0</i8></value>` + // d.hashing=
 		`</data></array></value>` +
 		`</data></array></value></param></params></methodResponse>`
 
@@ -71,6 +72,7 @@ func TestClientTorrentsEndToEnd(t *testing.T) {
 		Directory:      "/data",
 		Priority:       2,
 		Custom1:        "movies",
+		Hashing:        0,
 	}
 
 	if *got != *want {
