@@ -2,6 +2,7 @@ package rtorrent
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
@@ -36,6 +37,25 @@ func WithBasicAuth(username, password string) Option {
 		}
 		t.username = username
 		t.password = password
+	}
+}
+
+// WithTLSConfig sets the TLS client config used for requests made by a
+// Client constructed with DialHTTP.
+//
+// It panics if applied to a Client constructed with Dial or DialUnix.
+func WithTLSConfig(cfg *tls.Config) Option {
+	return func(c *Client) {
+		t, ok := c.t.(*httpTransport)
+		if !ok {
+			panic("rtorrent: WithTLSConfig used with a non-HTTP transport (Dial/DialUnix); it only applies to DialHTTP")
+		}
+		transport, ok := t.httpClient.Transport.(*http.Transport)
+		if !ok || transport == nil {
+			transport = http.DefaultTransport.(*http.Transport).Clone()
+		}
+		transport.TLSClientConfig = cfg
+		t.httpClient.Transport = transport
 	}
 }
 

@@ -3,6 +3,7 @@ package rtorrent
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -343,6 +344,29 @@ func TestWithBasicAuthPanicsOnNonHTTPTransport(t *testing.T) {
 		}
 	}()
 	Dial("127.0.0.1:5000", WithBasicAuth("user", "pass"))
+}
+
+func TestClientDialHTTPWithTLSConfig(t *testing.T) {
+	cfg := &tls.Config{InsecureSkipVerify: true}
+	c := DialHTTP("http://127.0.0.1:5000", WithTLSConfig(cfg))
+
+	ht := c.t.(*httpTransport)
+	transport, ok := ht.httpClient.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("httpClient.Transport = %T, want *http.Transport", ht.httpClient.Transport)
+	}
+	if transport.TLSClientConfig != cfg {
+		t.Errorf("TLSClientConfig = %p, want %p", transport.TLSClientConfig, cfg)
+	}
+}
+
+func TestWithTLSConfigPanicsOnNonHTTPTransport(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("Dial(WithTLSConfig) did not panic, want panic")
+		}
+	}()
+	Dial("127.0.0.1:5000", WithTLSConfig(&tls.Config{}))
 }
 
 func TestClientMulticallRows(t *testing.T) {
