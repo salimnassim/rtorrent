@@ -64,10 +64,14 @@ func decodeMethodResponse(data []byte) (Value, error) {
 	}
 }
 
-// rpcParser is a ecursive-descent parser over an xmlScanner
+// maxParseDepth bounds array/struct nesting during decode.
+const maxParseDepth = 500
+
+// rpcParser is a recursive-descent parser over an xmlScanner
 // token stream.
 type rpcParser struct {
-	dec *xmlScanner
+	dec   *xmlScanner
+	depth int
 }
 
 // nextStart advances past any non-element tokens and returns the next
@@ -251,6 +255,12 @@ func (p *rpcParser) parseInt(name string, newValue func(int64) Value) (Value, er
 // parseArray parses the content of an <array> element, consuming through
 // its own end tag.
 func (p *rpcParser) parseArray() (Value, error) {
+	p.depth++
+	defer func() { p.depth-- }()
+	if p.depth > maxParseDepth {
+		return Value{}, fmt.Errorf("decode xml-rpc: nesting depth exceeds %d", maxParseDepth)
+	}
+
 	se, err := p.nextStart()
 	if err != nil {
 		return Value{}, err
@@ -291,6 +301,12 @@ func (p *rpcParser) parseArray() (Value, error) {
 // parseStruct parses the content of a <struct> element, consuming through
 // its own end tag.
 func (p *rpcParser) parseStruct() (Value, error) {
+	p.depth++
+	defer func() { p.depth-- }()
+	if p.depth > maxParseDepth {
+		return Value{}, fmt.Errorf("decode xml-rpc: nesting depth exceeds %d", maxParseDepth)
+	}
+
 	members := make(map[string]Value, 8)
 	for {
 		tok, err := p.dec.Token()

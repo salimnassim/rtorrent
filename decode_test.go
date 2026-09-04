@@ -97,6 +97,13 @@ func TestDecodeMethodResponse(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "start tag with attributes errors instead of misparsing",
+			xml: `<methodResponse><params><param>` +
+				`<value foo="a/b"><string>x</string></value>` +
+				`</param></params></methodResponse>`,
+			wantErr: true,
+		},
+		{
 			name: "xml declaration prolog",
 			xml:  `<?xml version="1.0"?><methodResponse><params><param><value><string>hello</string></value></param></params></methodResponse>`,
 			want: NewString("hello"),
@@ -162,6 +169,27 @@ func TestDecodeMethodResponseTruncated(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "decode xml-rpc") {
 		t.Errorf("decodeMethodResponse() error = %v, want it to mention decode xml-rpc", err)
+	}
+}
+
+func TestDecodeMethodResponseDepthLimit(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(`<methodResponse><params><param>`)
+	for i := 0; i <= maxParseDepth; i++ {
+		b.WriteString(`<value><array><data>`)
+	}
+	b.WriteString(`<value><i4>1</i4></value>`)
+	for i := 0; i <= maxParseDepth; i++ {
+		b.WriteString(`</data></array></value>`)
+	}
+	b.WriteString(`</param></params></methodResponse>`)
+
+	_, err := decodeMethodResponse([]byte(b.String()))
+	if err == nil {
+		t.Fatalf("decodeMethodResponse() error = nil, want depth-limit error for %d levels of nesting", maxParseDepth+1)
+	}
+	if !strings.Contains(err.Error(), "nesting depth") {
+		t.Errorf("decodeMethodResponse() error = %v, want it to mention nesting depth", err)
 	}
 }
 

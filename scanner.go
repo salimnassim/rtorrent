@@ -133,7 +133,11 @@ func (s *xmlScanner) scanEndTag() (xmlToken, error) {
 	return xmlToken{kind: tokenEnd, name: name}, nil
 }
 
-// scanStartTag scans a <name> or self-closing <name/> start tag.
+// scanStartTag scans a <name> or self-closing <name/> start tag. XML-RPC
+// elements never carry attributes, so a start tag whose name is followed by
+// anything but optional whitespace and then '>' or '/>' is rejected outright
+// rather than scanned past that avoids misreading a '/' inside a quoted
+// attribute value as the self-closing marker.
 func (s *xmlScanner) scanStartTag() (xmlToken, error) {
 	s.pos++ // consume '<'
 	start := s.pos
@@ -148,15 +152,24 @@ func (s *xmlScanner) scanStartTag() (xmlToken, error) {
 		return xmlToken{}, fmt.Errorf("decode xml-rpc: empty tag name")
 	}
 
-	selfClosing := false
-	for s.pos < len(s.data) && s.data[s.pos] != '>' {
-		if s.data[s.pos] == '/' {
-			selfClosing = true
-		}
+	for s.pos < len(s.data) && isSpace(s.data[s.pos]) {
 		s.pos++
 	}
 	if s.pos >= len(s.data) {
 		return xmlToken{}, fmt.Errorf("decode xml-rpc: unterminated start tag %q", name)
+	}
+
+	selfClosing := false
+	switch s.data[s.pos] {
+	case '>':
+	case '/':
+		s.pos++
+		if s.pos >= len(s.data) || s.data[s.pos] != '>' {
+			return xmlToken{}, fmt.Errorf("decode xml-rpc: malformed start tag %q", name)
+		}
+		selfClosing = true
+	default:
+		return xmlToken{}, fmt.Errorf("decode xml-rpc: attributes are not supported in start tag %q", name)
 	}
 	s.pos++ // consume '>'
 
@@ -170,6 +183,16 @@ func (s *xmlScanner) scanStartTag() (xmlToken, error) {
 func isNameEnd(c byte) bool {
 	switch c {
 	case ' ', '\t', '\r', '\n', '/', '>':
+		return true
+	default:
+		return false
+	}
+}
+
+// isSpace reports whether c is XML whitespace.
+func isSpace(c byte) bool {
+	switch c {
+	case ' ', '\t', '\r', '\n':
 		return true
 	default:
 		return false
