@@ -123,6 +123,14 @@ func TestXMLScannerToken(t *testing.T) {
 				{kind: tokenEnd, name: "a"},
 			},
 		},
+		{
+			name: "trailing whitespace before close angle, no attributes",
+			in:   `<foo ></foo>`,
+			want: []xmlToken{
+				{kind: tokenStart, name: "foo"},
+				{kind: tokenEnd, name: "foo"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -155,6 +163,9 @@ func TestXMLScannerTokenErrors(t *testing.T) {
 		{name: "unknown entity reference", in: `&bogus;`},
 		{name: "invalid numeric character reference", in: `&#zz;`},
 		{name: "invalid hex character reference", in: `&#xzz;`},
+		{name: "start tag with attribute containing a slash", in: `<value foo="a/b">x</value>`},
+		{name: "start tag with attribute containing a close angle", in: `<value foo="a>b">x</value>`},
+		{name: "malformed self-closing tag", in: `<foo/x>`},
 	}
 
 	for _, tt := range tests {

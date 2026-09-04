@@ -101,21 +101,29 @@ func encodeValue(buf *bytes.Buffer, v Value) {
 }
 
 // escapeXML escapes the characters that are unsafe in XML element text
-// content.
+// content, and any byte below 0x20 (other than tab and LF) that XML 1.0
+// does not allow to appear literally anywhere in a document. It is only
+// ever used for element text, never attribute values, so "\"" and "'" are
+// deliberately left unescaped.
 func escapeXML(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
-		switch s[i] {
-		case '&':
+		c := s[i]
+		switch {
+		case c == '&':
 			b.WriteString("&amp;")
-		case '<':
+		case c == '<':
 			b.WriteString("&lt;")
-		case '>':
+		case c == '>':
 			b.WriteString("&gt;")
-		case '\r':
+		case c == '\r':
 			b.WriteString("&#13;")
+		case c < 0x20 && c != '\t' && c != '\n':
+			b.WriteString("&#")
+			b.WriteString(strconv.Itoa(int(c)))
+			b.WriteByte(';')
 		default:
-			b.WriteByte(s[i])
+			b.WriteByte(c)
 		}
 	}
 	return b.String()

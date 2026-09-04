@@ -17,6 +17,16 @@ func TestEncodeValue(t *testing.T) {
 			value: NewString("<a & b>"),
 			want:  "<value><string>&lt;a &amp; b&gt;</string></value>",
 		},
+		{
+			name:  "control characters escaped as numeric character references",
+			value: NewString("bad\x01name\x00here"),
+			want:  "<value><string>bad&#1;name&#0;here</string></value>",
+		},
+		{
+			name:  "tab and newline pass through unescaped",
+			value: NewString("a\tb\nc"),
+			want:  "<value><string>a\tb\nc</string></value>",
+		},
 		{name: "int", value: NewInt(42), want: "<value><i4>42</i4></value>"},
 		{name: "negative int", value: NewInt(-7), want: "<value><i4>-7</i4></value>"},
 		{
