@@ -71,23 +71,37 @@ func writeSCGIHeader(buf *bytes.Buffer, key, value string) {
 	buf.WriteByte(0)
 }
 
-const maxSCGIResponseBytes = 8 << 20
+const (
+	maxSCGIHeaderBytes   = 8 << 10
+	maxSCGIHeaderLines   = 64
+	maxSCGIResponseBytes = 8 << 20
+)
 
 // readSCGIResponse reads an SCGI response from r: CGI-style "Header: value"
 // lines up to a blank line, then the body.
 func readSCGIResponse(r io.Reader) ([]byte, error) {
-	br := bufio.NewReader(r)
+	br := bufio.NewReader(io.LimitReader(r, maxSCGIHeaderBytes+1))
+	headerBytes := 0
+	lines := 0
 	for {
 		line, err := br.ReadString('\n')
+		headerBytes += len(line)
 		if err != nil {
+			if headerBytes > maxSCGIHeaderBytes {
+				return nil, fmt.Errorf("response headers exceed %d bytes", maxSCGIHeaderBytes)
+			}
 			return nil, fmt.Errorf("truncated response headers: %w", err)
 		}
 		if strings.TrimRight(line, "\r\n") == "" {
 			break
 		}
+		lines++
+		if lines > maxSCGIHeaderLines {
+			return nil, fmt.Errorf("response headers exceed %d lines", maxSCGIHeaderLines)
+		}
 	}
 
-	respBody, err := io.ReadAll(io.LimitReader(br, maxSCGIResponseBytes+1))
+	respBody, err := io.ReadAll(io.LimitReader(io.MultiReader(br, r), maxSCGIResponseBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
