@@ -63,6 +63,16 @@ func TestReadSCGIResponse(t *testing.T) {
 			in:      "",
 			wantErr: true,
 		},
+		{
+			name:    "header line without newline exceeds byte cap",
+			in:      strings.Repeat("a", maxSCGIHeaderBytes*2),
+			wantErr: true,
+		},
+		{
+			name:    "header lines exceed line cap",
+			in:      strings.Repeat("X: 1\r\n", maxSCGIHeaderLines*2) + "\r\n<methodResponse/>",
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -81,6 +91,22 @@ func TestReadSCGIResponse(t *testing.T) {
 				t.Errorf("readSCGIResponse(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+type infiniteByteReader struct{ b byte }
+
+func (r infiniteByteReader) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = r.b
+	}
+	return len(p), nil
+}
+
+func TestReadSCGIResponseUnboundedHeaderStream(t *testing.T) {
+	_, err := readSCGIResponse(infiniteByteReader{'a'})
+	if err == nil {
+		t.Fatal("readSCGIResponse(infiniteByteReader) error = nil, want error")
 	}
 }
 
