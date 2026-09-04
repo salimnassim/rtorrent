@@ -3,8 +3,8 @@ WORKDIR /app
 COPY go.* ./
 RUN go mod download
 COPY . ./
-RUN CGO_ENABLED=0 go build -o ./rtctl ./cmd
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o ./rtctl ./cmd
 
-FROM scratch
+FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=builder /app/rtctl /app/rtctl
 CMD ["/app/rtctl"]

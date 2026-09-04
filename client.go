@@ -3,6 +3,7 @@ package rtorrent
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,10 +11,15 @@ import (
 
 const DefaultTimeout = 6 * time.Second
 
+// ErrIncompatibleOption is returned by Call when an Option meant for a
+// different transport.
+var ErrIncompatibleOption = errors.New("rtorrent: option incompatible with transport")
+
 // Client is an XML-RPC client for rTorrent, it is safe for concurrent use.
 type Client struct {
 	t       transport
 	timeout time.Duration
+	err     error
 }
 
 // Option configures a Client constructed by Dial, DialUnix, or DialHTTP.
@@ -27,13 +33,12 @@ func WithTimeout(d time.Duration) Option {
 
 // WithBasicAuth sets HTTP Basic Auth credentials on requests made by a
 // Client constructed with DialHTTP.
-//
-// It panics if applied to a Client constructed with Dial or DialUnix.
 func WithBasicAuth(username, password string) Option {
 	return func(c *Client) {
 		t, ok := c.t.(*httpTransport)
 		if !ok {
-			panic("rtorrent: WithBasicAuth used with a non-HTTP transport (Dial/DialUnix); it only applies to DialHTTP")
+			c.err = fmt.Errorf("rtorrent: WithBasicAuth used with a non-HTTP transport (Dial/DialUnix); it only applies to DialHTTP: %w", ErrIncompatibleOption)
+			return
 		}
 		t.username = username
 		t.password = password
@@ -42,13 +47,12 @@ func WithBasicAuth(username, password string) Option {
 
 // WithTLSConfig sets the TLS client config used for requests made by a
 // Client constructed with DialHTTP.
-//
-// It panics if applied to a Client constructed with Dial or DialUnix.
 func WithTLSConfig(cfg *tls.Config) Option {
 	return func(c *Client) {
 		t, ok := c.t.(*httpTransport)
 		if !ok {
-			panic("rtorrent: WithTLSConfig used with a non-HTTP transport (Dial/DialUnix); it only applies to DialHTTP")
+			c.err = fmt.Errorf("rtorrent: WithTLSConfig used with a non-HTTP transport (Dial/DialUnix); it only applies to DialHTTP: %w", ErrIncompatibleOption)
+			return
 		}
 		transport, ok := t.httpClient.Transport.(*http.Transport)
 		if !ok || transport == nil {
@@ -98,6 +102,10 @@ func (c *Client) Close() error {
 // Call invokes the XML-RPC method name with params and returns its single
 // return value.
 func (c *Client) Call(ctx context.Context, name string, params ...Value) (Value, error) {
+	if c.err != nil {
+		return Value{}, c.err
+	}
+
 	if _, ok := ctx.Deadline(); !ok && c.timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, c.timeout)

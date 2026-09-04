@@ -337,13 +337,12 @@ func TestClientDialHTTPWithBasicAuth(t *testing.T) {
 	}
 }
 
-func TestWithBasicAuthPanicsOnNonHTTPTransport(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("Dial(WithBasicAuth) did not panic, want panic")
-		}
-	}()
-	Dial("127.0.0.1:5000", WithBasicAuth("user", "pass"))
+func TestWithBasicAuthErrorsOnNonHTTPTransport(t *testing.T) {
+	c := Dial("127.0.0.1:5000", WithBasicAuth("user", "pass"))
+	_, err := c.Call(context.Background(), "system.listMethods")
+	if !errors.Is(err, ErrIncompatibleOption) {
+		t.Fatalf("Call() error = %v, want wrapping ErrIncompatibleOption", err)
+	}
 }
 
 func TestClientDialHTTPWithTLSConfig(t *testing.T) {
@@ -360,13 +359,12 @@ func TestClientDialHTTPWithTLSConfig(t *testing.T) {
 	}
 }
 
-func TestWithTLSConfigPanicsOnNonHTTPTransport(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("Dial(WithTLSConfig) did not panic, want panic")
-		}
-	}()
-	Dial("127.0.0.1:5000", WithTLSConfig(&tls.Config{}))
+func TestWithTLSConfigErrorsOnNonHTTPTransport(t *testing.T) {
+	c := Dial("127.0.0.1:5000", WithTLSConfig(&tls.Config{}))
+	_, err := c.Call(context.Background(), "system.listMethods")
+	if !errors.Is(err, ErrIncompatibleOption) {
+		t.Fatalf("Call() error = %v, want wrapping ErrIncompatibleOption", err)
+	}
 }
 
 func TestClientMulticallRows(t *testing.T) {
