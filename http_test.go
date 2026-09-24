@@ -20,8 +20,8 @@ func TestHTTPTransportCallSuccess(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	tr := &httpTransport{url: srv.URL, httpClient: srv.Client()}
-	got, err := tr.call(context.Background(), []byte("request"))
+	tr := &httpTransport{endpoint: srv.URL, httpClient: srv.Client()}
+	got, err := tr.call(t.Context(), []byte("request"))
 	if err != nil {
 		t.Fatalf("call() unexpected error: %v", err)
 	}
@@ -44,8 +44,8 @@ func TestHTTPTransportCallBasicAuth(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	tr := &httpTransport{url: srv.URL, httpClient: srv.Client(), username: "user", password: "pass"}
-	if _, err := tr.call(context.Background(), []byte("request")); err != nil {
+	tr := &httpTransport{endpoint: srv.URL, httpClient: srv.Client(), username: "user", password: "pass"}
+	if _, err := tr.call(t.Context(), []byte("request")); err != nil {
 		t.Fatalf("call() unexpected error: %v", err)
 	}
 }
@@ -60,8 +60,8 @@ func TestHTTPTransportCallNoBasicAuth(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	tr := &httpTransport{url: srv.URL, httpClient: srv.Client()}
-	if _, err := tr.call(context.Background(), []byte("request")); err != nil {
+	tr := &httpTransport{endpoint: srv.URL, httpClient: srv.Client()}
+	if _, err := tr.call(t.Context(), []byte("request")); err != nil {
 		t.Fatalf("call() unexpected error: %v", err)
 	}
 }
@@ -73,8 +73,8 @@ func TestHTTPTransportCallNon2xx(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	tr := &httpTransport{url: srv.URL, httpClient: srv.Client()}
-	_, err := tr.call(context.Background(), []byte("request"))
+	tr := &httpTransport{endpoint: srv.URL, httpClient: srv.Client()}
+	_, err := tr.call(t.Context(), []byte("request"))
 	if err == nil {
 		t.Fatal("call() error = nil, want error for 500 status")
 	}
@@ -90,8 +90,8 @@ func TestHTTPTransportCallOversizedBody(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	tr := &httpTransport{url: srv.URL, httpClient: srv.Client()}
-	_, err := tr.call(context.Background(), []byte("request"))
+	tr := &httpTransport{endpoint: srv.URL, httpClient: srv.Client()}
+	_, err := tr.call(t.Context(), []byte("request"))
 	if err == nil {
 		t.Fatal("call() error = nil, want error for oversized response body")
 	}
@@ -104,9 +104,9 @@ func TestHTTPTransportCallContextCanceled(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	tr := &httpTransport{url: srv.URL, httpClient: srv.Client()}
+	tr := &httpTransport{endpoint: srv.URL, httpClient: srv.Client()}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
 	start := time.Now()

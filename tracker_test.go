@@ -25,7 +25,7 @@ func TestClientTrackersEndToEnd(t *testing.T) {
 		},
 	}, nil)
 
-	trackers, err := c.Trackers(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567")
+	trackers, err := c.Trackers(t.Context(), "0123456789ABCDEF0123456789ABCDEF01234567")
 	if err != nil {
 		t.Fatalf("Trackers() unexpected error: %v", err)
 	}

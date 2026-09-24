@@ -200,7 +200,7 @@ func TestSCGITransportCallSuccessTCP(t *testing.T) {
 	})
 
 	s := &scgiTransport{network: "tcp", address: addr}
-	got, err := s.call(context.Background(), []byte("request"))
+	got, err := s.call(t.Context(), []byte("request"))
 	if err != nil {
 		t.Fatalf("call() unexpected error: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestSCGITransportCallSuccessUnix(t *testing.T) {
 	})
 
 	s := &scgiTransport{network: "unix", address: addr}
-	got, err := s.call(context.Background(), []byte("request"))
+	got, err := s.call(t.Context(), []byte("request"))
 	if err != nil {
 		t.Fatalf("call() unexpected error: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestSCGITransportCallSuccessUnix(t *testing.T) {
 func TestSCGITransportCallDialCanceled(t *testing.T) {
 	s := &scgiTransport{network: "tcp", address: "127.0.0.1:0"}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	_, err := s.call(ctx, []byte("request"))
@@ -251,7 +251,7 @@ func TestSCGITransportCallReadCanceled(t *testing.T) {
 
 	s := &scgiTransport{network: "tcp", address: addr}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	start := time.Now()

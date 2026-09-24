@@ -18,7 +18,7 @@ import (
 func startRtorrent(t *testing.T) string {
 	t.Helper()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	c, err := testcontainers.Run(ctx, "",
 		testcontainers.WithDockerfile(testcontainers.FromDockerfile{
@@ -52,7 +52,7 @@ func TestIntegration_ListMethods(t *testing.T) {
 	addr := startRtorrent(t)
 	client := rtorrent.Dial(addr)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	v, err := client.Call(ctx, "system.listMethods")
@@ -72,7 +72,7 @@ func TestIntegration_ListMethods(t *testing.T) {
 func loadFake(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	if _, err := client.Call(ctx, "load.normal",
@@ -86,7 +86,7 @@ func loadFake(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 func loadFakeRaw(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	data, err := os.ReadFile("testdata/fake.torrent")
@@ -103,7 +103,7 @@ func loadFakeRaw(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 func loadFakeStart(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	if err := client.LoadStart(ctx, "/downloads/fake.torrent"); err != nil {
@@ -116,7 +116,7 @@ func loadFakeStart(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 func loadFakeRawStart(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	data, err := os.ReadFile("testdata/fake.torrent")
@@ -133,7 +133,7 @@ func loadFakeRawStart(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 func waitForFake(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	deadline := time.Now().Add(10 * time.Second)
@@ -155,7 +155,7 @@ func waitForFake(t *testing.T, client *rtorrent.Client) *rtorrent.Torrent {
 func mustTorrent(t *testing.T, client *rtorrent.Client, hash string) *rtorrent.Torrent {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	torrents, err := client.Torrents(ctx, "main")
@@ -246,7 +246,7 @@ func TestIntegration_FileMulticall(t *testing.T) {
 
 	torrent := loadFake(t, client)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	files, err := client.Files(ctx, torrent.Hash)
@@ -271,7 +271,7 @@ func TestIntegration_TorrentLifecycle(t *testing.T) {
 	torrent := loadFake(t, client)
 	hash := torrent.Hash
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	if err := client.Start(ctx, hash); err != nil {
@@ -340,7 +340,7 @@ func TestIntegration_SetFilePriority(t *testing.T) {
 
 	torrent := loadFake(t, client)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	if err := client.SetFilePriority(ctx, torrent.Hash, 0, 2); err != nil {
@@ -363,7 +363,7 @@ func TestIntegration_ExecuteCapture(t *testing.T) {
 	addr := startRtorrent(t)
 	client := rtorrent.Dial(addr)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	out, err := client.ExecuteCapture(ctx, "echo", "-n", "integration")
@@ -379,7 +379,7 @@ func TestIntegration_ExecuteNothrow(t *testing.T) {
 	addr := startRtorrent(t)
 	client := rtorrent.Dial(addr)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	status, err := client.ExecuteNothrow(ctx, "false")
@@ -395,7 +395,7 @@ func TestIntegration_ExecuteThrow(t *testing.T) {
 	addr := startRtorrent(t)
 	client := rtorrent.Dial(addr)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	if err := client.ExecuteThrow(ctx, "true"); err != nil {
@@ -416,7 +416,7 @@ func TestIntegration_FaultUnwraps(t *testing.T) {
 	addr := startRtorrent(t)
 	client := rtorrent.Dial(addr)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	_, err := client.Call(ctx, "not.a.real.method")

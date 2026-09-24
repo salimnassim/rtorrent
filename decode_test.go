@@ -154,11 +154,9 @@ func TestDecodeMethodResponseFault(t *testing.T) {
 	if !errors.As(err, &fault) {
 		t.Fatalf("errors.As(%v, &fault) = false, want true", err)
 	}
-	if fault.FaultCode != 7 {
-		t.Errorf("fault.FaultCode = %d, want 7", fault.FaultCode)
-	}
-	if fault.FaultString != "method not found" {
-		t.Errorf("fault.FaultString = %q, want %q", fault.FaultString, "method not found")
+	want := &Fault{FaultCode: 7, FaultString: "method not found"}
+	if diff := cmp.Diff(want, fault); diff != "" {
+		t.Errorf("decodeMethodResponse() fault mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -238,4 +236,16 @@ func FuzzDecodeMethodResponse(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		_, _ = decodeMethodResponse(data)
 	})
+}
+
+func TestDecodeMethodResponseErrorPrefixOnce(t *testing.T) {
+	const data = `<methodResponse><params><param><value><string>unterminated`
+
+	_, err := decodeMethodResponse([]byte(data + "&amp"))
+	if err == nil {
+		t.Fatal("decodeMethodResponse() error = nil, want scanner error")
+	}
+	if n := strings.Count(err.Error(), "decode xml-rpc:"); n != 1 {
+		t.Errorf("decodeMethodResponse() error = %q, want %q exactly once, got %d", err, "decode xml-rpc:", n)
+	}
 }
