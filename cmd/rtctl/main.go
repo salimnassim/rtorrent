@@ -9,14 +9,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/salimnassim/rtorrent"
 )
 
 func main() {
-	err := run(os.Args[1:], os.Stdout)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	err := run(ctx, os.Args[1:], os.Getenv, os.Stdout)
 	switch {
 	case err == nil:
 		return
@@ -24,15 +29,19 @@ func main() {
 		os.Exit(0)
 	default:
 		fmt.Fprintln(os.Stderr, "rtctl:", err)
+		stop()
 		os.Exit(1)
 	}
 }
 
-func run(args []string, stdout io.Writer) error {
+// run parses args, falling back to the RTCTL_* environment variables (read
+// via getenv) for unset -addr, -user and -password, calls the requested
+// method and writes its result to stdout as JSON.
+func run(ctx context.Context, args []string, getenv func(string) string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("rtctl", flag.ContinueOnError)
-	addr := fs.String("addr", "", "rtorrent address: host:port or scgi://host:port (TCP SCGI), unix:///path (Unix socket SCGI), or http(s)://... (HTTP)")
-	user := fs.String("user", "", "HTTP Basic Auth username (only used with an http(s):// -addr)")
-	password := fs.String("password", "", "HTTP Basic Auth password (only used with an http(s):// -addr)")
+	addr := fs.String("addr", "", "rtorrent address: host:port or scgi://host:port (TCP SCGI), unix:///path (Unix socket SCGI), or http(s)://... (HTTP) (env RTCTL_ADDR)")
+	user := fs.String("user", "", "HTTP Basic Auth username, only used with an http(s):// -addr (env RTCTL_USER)")
+	password := fs.String("password", "", "HTTP Basic Auth password, only used with an http(s):// -addr (env RTCTL_PASSWORD, preferred over the flag)")
 	timeout := fs.Duration("timeout", rtorrent.DefaultTimeout, "request timeout")
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "usage: rtctl -addr ADDR [options] METHOD [PARAM ...]\n\n")
@@ -40,6 +49,20 @@ func run(args []string, stdout io.Writer) error {
 	}
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	// Env values are applied after parsing rather than as flag defaults so
+	// that -h never prints the password.
+	for _, f := range []struct {
+		val *string
+		env string
+	}{
+		{addr, "RTCTL_ADDR"},
+		{user, "RTCTL_USER"},
+		{password, "RTCTL_PASSWORD"},
+	} {
+		if *f.val == "" {
+			*f.val = getenv(f.env)
+		}
 	}
 
 	if *addr == "" {
@@ -55,14 +78,12 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	values := make([]rtorrent.Value, len(params))
 	for i, p := range params {
 		values[i] = rtorrent.NewString(p)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-	defer cancel()
 
 	result, err := client.Call(ctx, method, values...)
 	if err != nil {
@@ -101,7 +122,8 @@ func dial(addr, user, password string, timeout time.Duration) (*rtorrent.Client,
 }
 
 // toAny converts an rtorrent.Value into a plain any tree suitable for
-// json.Marshal.
+// json.Marshal. The As* errors are ignored because each is called only after
+// switching on the matching Kind, so they cannot fail.
 func toAny(v rtorrent.Value) any {
 	switch v.Kind() {
 	case rtorrent.KindString:
@@ -130,7 +152,10 @@ func toAny(v rtorrent.Value) any {
 			out[k] = toAny(e)
 		}
 		return out
-	default:
+	case rtorrent.KindBase64:
+		data, _ := v.AsBase64()
+		return data
+	default: // KindNil
 		return nil
 	}
 }

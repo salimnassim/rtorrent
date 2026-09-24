@@ -3,7 +3,9 @@ package rtorrent
 import (
 	"bytes"
 	"encoding/base64"
-	"sort"
+	"maps"
+	"math"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -28,8 +30,9 @@ func encodeMethodCall(name string, params []Value) []byte {
 	return buf.Bytes()
 }
 
-// encodeValue writes v to buf as an XML-RPC <value> element. KindInt64
-// emits <i8>, not <i4>.
+// encodeValue writes v to buf as an XML-RPC <value> element. KindInt
+// emits <i4> (or <i8> if the value does not fit in 32 bits) and KindInt64
+// emits <i8>.
 func encodeValue(buf *bytes.Buffer, v Value) {
 	buf.WriteString("<value>")
 
@@ -40,6 +43,14 @@ func encodeValue(buf *bytes.Buffer, v Value) {
 		buf.WriteString("</string>")
 
 	case KindInt:
+		// <i4> is 32 bits on the wire; a wider value would be rejected or
+		// truncated by the server, so it is sent as <i8> instead.
+		if v.num < math.MinInt32 || v.num > math.MaxInt32 {
+			buf.WriteString("<i8>")
+			buf.WriteString(strconv.FormatInt(v.num, 10))
+			buf.WriteString("</i8>")
+			break
+		}
 		buf.WriteString("<i4>")
 		buf.WriteString(strconv.FormatInt(v.num, 10))
 		buf.WriteString("</i4>")
@@ -77,12 +88,7 @@ func encodeValue(buf *bytes.Buffer, v Value) {
 		buf.WriteString("<struct>")
 
 		// Sorted for deterministic wire output.
-		keys := make([]string, 0, len(v.strct))
-		for k := range v.strct {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
+		for _, k := range slices.Sorted(maps.Keys(v.strct)) {
 			buf.WriteString("<member><name>")
 			buf.WriteString(escapeXML(k))
 			buf.WriteString("</name>")

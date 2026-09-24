@@ -391,7 +391,7 @@ func (p *rpcParser) parseUnknown(se xmlToken) (Value, error) {
 		case tokenEnd:
 			if depth == 0 {
 				if hasChild {
-					return Value{}, fmt.Errorf("unsupported XML-RPC type %q", name)
+					return Value{}, fmt.Errorf("decode xml-rpc: unsupported type %q", name)
 				}
 				return NewString(text.String()), nil
 			}

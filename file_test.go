@@ -24,7 +24,7 @@ func TestClientFilesEndToEnd(t *testing.T) {
 		},
 	}, nil)
 
-	files, err := c.Files(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567")
+	files, err := c.Files(t.Context(), "0123456789ABCDEF0123456789ABCDEF01234567")
 	if err != nil {
 		t.Fatalf("Files() unexpected error: %v", err)
 	}

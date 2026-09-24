@@ -40,7 +40,7 @@ jobs:
           ext=""
           if [ "$GOOS" = "windows" ]; then ext=".exe"; fi
           name="rtctl-${{ matrix.goos }}-${{ matrix.goarch }}-${{ github.ref_name }}${ext}"
-          go build -ldflags="-s -w" -o "dist/${name}" ./cmd
+          go build -ldflags="-s -w" -o "dist/${name}" ./cmd/rtctl
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

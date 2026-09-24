@@ -1,9 +1,6 @@
 package rtorrent
 
-import (
-	"context"
-	"fmt"
-)
+import "context"
 
 // fileColumns is the fixed list of f.* commands passed to f.multicall to
 // populate a File, in the order File's fields are read by fileFromRow.
@@ -39,40 +36,18 @@ type File struct {
 
 // fileFromRow converts one f.multicall result row into a File.
 func fileFromRow(row []Value) (*File, error) {
-	if len(row) != len(fileColumns) {
-		return nil, fmt.Errorf("rtorrent: file row: got %d columns, want %d", len(row), len(fileColumns))
+	var f File
+	r := newRowReader("file", row, len(fileColumns))
+	r.readString(&f.Path, "path")
+	r.readInt64(&f.SizeBytes, "size bytes")
+	r.readInt64(&f.SizeChunks, "size chunks")
+	r.readInt64(&f.CompletedChunks, "completed chunks")
+	r.readInt64(&f.Priority, "priority")
+	r.readBool(&f.IsCreated, "is created")
+	r.readInt64(&f.Offset, "offset")
+	if r.err != nil {
+		return nil, r.err
 	}
-
-	var (
-		f   File
-		err error
-	)
-	if f.Path, err = row[0].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: file row: path: %w", err)
-	}
-	if f.SizeBytes, err = row[1].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: file row: size bytes: %w", err)
-	}
-	if f.SizeChunks, err = row[2].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: file row: size chunks: %w", err)
-	}
-	if f.CompletedChunks, err = row[3].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: file row: completed chunks: %w", err)
-	}
-	if f.Priority, err = row[4].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: file row: priority: %w", err)
-	}
-
-	isCreated, err := row[5].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: file row: is created: %w", err)
-	}
-	f.IsCreated = isCreated != 0
-
-	if f.Offset, err = row[6].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: file row: offset: %w", err)
-	}
-
 	return &f, nil
 }
 

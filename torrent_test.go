@@ -42,7 +42,7 @@ func TestClientTorrentsEndToEnd(t *testing.T) {
 		},
 	}, nil)
 
-	torrents, err := c.Torrents(context.Background(), "main")
+	torrents, err := c.Torrents(t.Context(), "main")
 	if err != nil {
 		t.Fatalf("Torrents() unexpected error: %v", err)
 	}

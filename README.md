@@ -23,7 +23,7 @@ HTTP transport as a fallback for proxied setups.
 - `tracker.go` `Tracker` model, `Client.Trackers`, `Client.TrackersCustom`.
 - `file.go` `File` model, `Client.Files`, `Client.FilesCustom`.
 - `execute.go` `Client.ExecuteThrow`/`ExecuteNothrow`/`ExecuteCapture`.
-- `cmd/rtctl.go` `rtctl`, a minimal CLI for calling XML-RPC methods directly.
+- `cmd/rtctl` `rtctl`, a minimal CLI for calling XML-RPC methods directly.
 
 ## Install
 
@@ -168,11 +168,17 @@ rtctl -addr 127.0.0.1:5000 system.listMethods
 rtctl -addr https://foo.bar.tld/RPC2 -user bob -password secret d.multicall2 "" main d.hash= d.name=
 ```
 
+`-addr`, `-user` and `-password` fall back to the `RTCTL_ADDR`, `RTCTL_USER` and `RTCTL_PASSWORD` environment variables when unset. 
+
+```
+RTCTL_ADDR=https://foo.bar.tld/RPC2 RTCTL_USER=bob RTCTL_PASSWORD=secret rtctl system.listMethods
+```
+
 Or run from source without building:
 
 ```
-go run ./cmd -addr 127.0.0.1:5000 system.listMethods
-go run ./cmd -addr https://foo.bar.tld/RPC2 -user bob -password secret d.multicall2 "" main d.hash= d.name=
+go run ./cmd/rtctl -addr 127.0.0.1:5000 system.listMethods
+go run ./cmd/rtctl -addr https://foo.bar.tld/RPC2 -user bob -password secret d.multicall2 "" main d.hash= d.name=
 ```
 
 ## Development

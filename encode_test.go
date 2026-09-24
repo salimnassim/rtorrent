@@ -29,6 +29,9 @@ func TestEncodeValue(t *testing.T) {
 		},
 		{name: "int", value: NewInt(42), want: "<value><i4>42</i4></value>"},
 		{name: "negative int", value: NewInt(-7), want: "<value><i4>-7</i4></value>"},
+		{name: "int at int32 max stays i4", value: NewInt(2147483647), want: "<value><i4>2147483647</i4></value>"},
+		{name: "int above int32 range emits i8", value: NewInt(2147483648), want: "<value><i8>2147483648</i8></value>"},
+		{name: "int below int32 range emits i8", value: NewInt(-2147483649), want: "<value><i8>-2147483649</i8></value>"},
 		{
 			name:  "int64 emits i8, not i4",
 			value: NewInt64(9223372036854775807),

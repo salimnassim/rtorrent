@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 type stubTransport struct {
@@ -28,7 +30,7 @@ func TestClientCallDecodesResponse(t *testing.T) {
 		},
 	}, nil)
 
-	v, err := c.Call(context.Background(), "system.listMethods")
+	v, err := c.Call(t.Context(), "system.listMethods")
 	if err != nil {
 		t.Fatalf("Call() unexpected error: %v", err)
 	}
@@ -53,7 +55,7 @@ func TestClientCallFaultUnwrapsViaErrorsAs(t *testing.T) {
 		},
 	}, nil)
 
-	_, err := c.Call(context.Background(), "bogus.method")
+	_, err := c.Call(t.Context(), "bogus.method")
 	if err == nil {
 		t.Fatal("Call() error = nil, want fault error")
 	}
@@ -62,8 +64,9 @@ func TestClientCallFaultUnwrapsViaErrorsAs(t *testing.T) {
 	if !errors.As(err, &fault) {
 		t.Fatalf("errors.As(%v, *Fault) = false, want true", err)
 	}
-	if fault.FaultCode != 500 || fault.FaultString != "method not found" {
-		t.Errorf("fault = %+v, want {500 method not found}", fault)
+	want := &Fault{FaultCode: 500, FaultString: "method not found"}
+	if diff := cmp.Diff(want, fault); diff != "" {
+		t.Errorf("Call() fault mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -98,7 +101,7 @@ func TestClientCallTimeoutPrecedence(t *testing.T) {
 				},
 			}, tt.clientOpts)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			var cancel context.CancelFunc
 			if tt.ctxDeadline > 0 {
 				ctx, cancel = context.WithTimeout(ctx, tt.ctxDeadline)
@@ -135,7 +138,7 @@ func TestClientLoadRawStart(t *testing.T) {
 		},
 	}, nil)
 
-	if err := c.LoadRawStart(context.Background(), []byte("d4:name4:fakee")); err != nil {
+	if err := c.LoadRawStart(t.Context(), []byte("d4:name4:fakee")); err != nil {
 		t.Fatalf("LoadRawStart() unexpected error: %v", err)
 	}
 	if !bytes.Contains(gotBody, []byte("<methodName>load.raw_start</methodName>")) {
@@ -157,7 +160,7 @@ func TestClientLoadStart(t *testing.T) {
 		},
 	}, nil)
 
-	if err := c.LoadStart(context.Background(), "/downloads/fake.torrent"); err != nil {
+	if err := c.LoadStart(t.Context(), "/downloads/fake.torrent"); err != nil {
 		t.Fatalf("LoadStart() unexpected error: %v", err)
 	}
 	if !bytes.Contains(gotBody, []byte("<methodName>load.start</methodName>")) {
@@ -193,7 +196,7 @@ func TestClientSetCustom(t *testing.T) {
 				},
 			}, nil)
 
-			if err := tt.setCustom(c, context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567", "movies"); err != nil {
+			if err := tt.setCustom(c, t.Context(), "0123456789ABCDEF0123456789ABCDEF01234567", "movies"); err != nil {
 				t.Fatalf("%s() unexpected error: %v", tt.name, err)
 			}
 			if !bytes.Contains(gotBody, []byte("<methodName>"+tt.wantMethod+"</methodName>")) {
@@ -235,7 +238,7 @@ func TestClientTorrentAction(t *testing.T) {
 			}, nil)
 
 			const hash = "0123456789ABCDEF0123456789ABCDEF01234567"
-			if err := tt.action(c, context.Background(), hash); err != nil {
+			if err := tt.action(c, t.Context(), hash); err != nil {
 				t.Fatalf("%s() unexpected error: %v", tt.name, err)
 			}
 			if !bytes.Contains(gotBody, []byte("<methodName>"+tt.wantMethod+"</methodName>")) {
@@ -259,7 +262,7 @@ func TestClientSetPriority(t *testing.T) {
 		},
 	}, nil)
 
-	if err := c.SetPriority(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567", 3); err != nil {
+	if err := c.SetPriority(t.Context(), "0123456789ABCDEF0123456789ABCDEF01234567", 3); err != nil {
 		t.Fatalf("SetPriority() unexpected error: %v", err)
 	}
 	if !bytes.Contains(gotBody, []byte("<methodName>d.priority.set</methodName>")) {
@@ -284,7 +287,7 @@ func TestClientSetFilePriority(t *testing.T) {
 		},
 	}, nil)
 
-	if err := c.SetFilePriority(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567", 2, 1); err != nil {
+	if err := c.SetFilePriority(t.Context(), "0123456789ABCDEF0123456789ABCDEF01234567", 2, 1); err != nil {
 		t.Fatalf("SetFilePriority() unexpected error: %v", err)
 	}
 	if !bytes.Contains(gotBody, []byte("<methodName>f.priority.set</methodName>")) {
@@ -309,7 +312,7 @@ func TestClientSetDirectory(t *testing.T) {
 		},
 	}, nil)
 
-	if err := c.SetDirectory(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567", "/downloads/moved"); err != nil {
+	if err := c.SetDirectory(t.Context(), "0123456789ABCDEF0123456789ABCDEF01234567", "/downloads/moved"); err != nil {
 		t.Fatalf("SetDirectory() unexpected error: %v", err)
 	}
 	if !bytes.Contains(gotBody, []byte("<methodName>d.directory.set</methodName>")) {
@@ -332,14 +335,14 @@ func TestClientDialHTTPWithBasicAuth(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	c := DialHTTP(srv.URL, WithBasicAuth("user", "pass"))
-	if _, err := c.Call(context.Background(), "system.listMethods"); err != nil {
+	if _, err := c.Call(t.Context(), "system.listMethods"); err != nil {
 		t.Fatalf("Call() unexpected error: %v", err)
 	}
 }
 
 func TestWithBasicAuthErrorsOnNonHTTPTransport(t *testing.T) {
 	c := Dial("127.0.0.1:5000", WithBasicAuth("user", "pass"))
-	_, err := c.Call(context.Background(), "system.listMethods")
+	_, err := c.Call(t.Context(), "system.listMethods")
 	if !errors.Is(err, ErrIncompatibleOption) {
 		t.Fatalf("Call() error = %v, want wrapping ErrIncompatibleOption", err)
 	}
@@ -361,7 +364,7 @@ func TestClientDialHTTPWithTLSConfig(t *testing.T) {
 
 func TestWithTLSConfigErrorsOnNonHTTPTransport(t *testing.T) {
 	c := Dial("127.0.0.1:5000", WithTLSConfig(&tls.Config{}))
-	_, err := c.Call(context.Background(), "system.listMethods")
+	_, err := c.Call(t.Context(), "system.listMethods")
 	if !errors.Is(err, ErrIncompatibleOption) {
 		t.Fatalf("Call() error = %v, want wrapping ErrIncompatibleOption", err)
 	}
@@ -379,7 +382,7 @@ func TestClientMulticallRows(t *testing.T) {
 		},
 	}, nil)
 
-	rows, err := c.Multicall(context.Background(), "d.multicall2", []Value{NewString(""), NewString("main")}, "d.hash=", "d.name=")
+	rows, err := c.Multicall(t.Context(), "d.multicall2", []Value{NewString(""), NewString("main")}, "d.hash=", "d.name=")
 	if err != nil {
 		t.Fatalf("Multicall() unexpected error: %v", err)
 	}
@@ -406,7 +409,7 @@ func TestClientMulticallRowLengthMismatch(t *testing.T) {
 		},
 	}, nil)
 
-	_, err := c.Multicall(context.Background(), "d.multicall2", []Value{NewString(""), NewString("main")}, "d.hash=", "d.name=")
+	_, err := c.Multicall(t.Context(), "d.multicall2", []Value{NewString(""), NewString("main")}, "d.hash=", "d.name=")
 	if err == nil {
 		t.Fatal("Multicall() error = nil, want row-length mismatch error")
 	}
@@ -421,7 +424,7 @@ func TestClientMulticallNotAnArray(t *testing.T) {
 		},
 	}, nil)
 
-	_, err := c.Multicall(context.Background(), "d.multicall2", []Value{NewString(""), NewString("main")}, "d.hash=")
+	_, err := c.Multicall(t.Context(), "d.multicall2", []Value{NewString(""), NewString("main")}, "d.hash=")
 	if err == nil {
 		t.Fatal("Multicall() error = nil, want error for non-array response")
 	}

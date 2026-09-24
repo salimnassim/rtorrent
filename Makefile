@@ -3,7 +3,7 @@
 FUZZ_TARGETS := FuzzDecodeMethodResponse FuzzXMLScannerToken FuzzReadSCGIResponse FuzzEncodeDecodeString FuzzEncodeDecodeBase64
 
 build:
-	go build -o ./dist/rtctl ./cmd/rtctl.go
+	go build -o ./dist/rtctl ./cmd/rtctl
 
 test:
 	go test -v ./...

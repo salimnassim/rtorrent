@@ -18,7 +18,7 @@ func TestClientExecuteThrow(t *testing.T) {
 		},
 	}, nil)
 
-	if err := c.ExecuteThrow(context.Background(), "sh", "-c", "true"); err != nil {
+	if err := c.ExecuteThrow(t.Context(), "sh", "-c", "true"); err != nil {
 		t.Fatalf("ExecuteThrow() unexpected error: %v", err)
 	}
 	if !bytes.Contains(gotBody, []byte("<methodName>execute.throw</methodName>")) {
@@ -45,7 +45,7 @@ func TestClientExecuteNoArgs(t *testing.T) {
 		},
 	}, nil)
 
-	if err := c.ExecuteThrow(context.Background(), "true"); err != nil {
+	if err := c.ExecuteThrow(t.Context(), "true"); err != nil {
 		t.Fatalf("ExecuteThrow() unexpected error: %v", err)
 	}
 
@@ -68,7 +68,7 @@ func TestClientExecuteThrowFaultUnwraps(t *testing.T) {
 		},
 	}, nil)
 
-	err := c.ExecuteThrow(context.Background(), "false")
+	err := c.ExecuteThrow(t.Context(), "false")
 	if err == nil {
 		t.Fatal("ExecuteThrow() error = nil, want fault error")
 	}
@@ -93,7 +93,7 @@ func TestClientExecuteNothrow(t *testing.T) {
 		},
 	}, nil)
 
-	status, err := c.ExecuteNothrow(context.Background(), "sh", "-c", "exit 1")
+	status, err := c.ExecuteNothrow(t.Context(), "sh", "-c", "exit 1")
 	if err != nil {
 		t.Fatalf("ExecuteNothrow() unexpected error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestClientExecuteNothrowDecodeError(t *testing.T) {
 		},
 	}, nil)
 
-	if _, err := c.ExecuteNothrow(context.Background(), "true"); err == nil {
+	if _, err := c.ExecuteNothrow(t.Context(), "true"); err == nil {
 		t.Fatal("ExecuteNothrow() error = nil, want decode error")
 	}
 }
@@ -130,7 +130,7 @@ func TestClientExecuteCapture(t *testing.T) {
 		},
 	}, nil)
 
-	out, err := c.ExecuteCapture(context.Background(), "echo", "-n", "hello")
+	out, err := c.ExecuteCapture(t.Context(), "echo", "-n", "hello")
 	if err != nil {
 		t.Fatalf("ExecuteCapture() unexpected error: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestClientExecuteCaptureDecodeError(t *testing.T) {
 		},
 	}, nil)
 
-	if _, err := c.ExecuteCapture(context.Background(), "true"); err == nil {
+	if _, err := c.ExecuteCapture(t.Context(), "true"); err == nil {
 		t.Fatal("ExecuteCapture() error = nil, want decode error")
 	}
 }

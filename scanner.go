@@ -2,6 +2,7 @@ package rtorrent
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -82,7 +83,7 @@ func (s *xmlScanner) Token() (xmlToken, error) {
 func (s *xmlScanner) skipTo(closer string) error {
 	i := bytes.Index(s.data[s.pos:], []byte(closer))
 	if i < 0 {
-		return fmt.Errorf("decode xml-rpc: unterminated %q", closer)
+		return fmt.Errorf("unterminated %q", closer)
 	}
 	s.pos += i + len(closer)
 	return nil
@@ -111,7 +112,7 @@ func (s *xmlScanner) scanCDATA() (xmlToken, error) {
 	contentStart := s.pos + len(open)
 	i := bytes.Index(s.data[contentStart:], []byte(close))
 	if i < 0 {
-		return xmlToken{}, fmt.Errorf("decode xml-rpc: unterminated CDATA section")
+		return xmlToken{}, errors.New("unterminated CDATA section")
 	}
 	text := s.data[contentStart : contentStart+i]
 	s.pos = contentStart + i + len(close)
@@ -126,7 +127,7 @@ func (s *xmlScanner) scanEndTag() (xmlToken, error) {
 		s.pos++
 	}
 	if s.pos >= len(s.data) {
-		return xmlToken{}, fmt.Errorf("decode xml-rpc: unterminated end tag")
+		return xmlToken{}, errors.New("unterminated end tag")
 	}
 	name := strings.TrimSpace(string(s.data[start:s.pos]))
 	s.pos++ // consume '>'
@@ -145,18 +146,18 @@ func (s *xmlScanner) scanStartTag() (xmlToken, error) {
 		s.pos++
 	}
 	if s.pos >= len(s.data) {
-		return xmlToken{}, fmt.Errorf("decode xml-rpc: unterminated start tag")
+		return xmlToken{}, errors.New("unterminated start tag")
 	}
 	name := string(s.data[start:s.pos])
 	if name == "" {
-		return xmlToken{}, fmt.Errorf("decode xml-rpc: empty tag name")
+		return xmlToken{}, errors.New("empty tag name")
 	}
 
 	for s.pos < len(s.data) && isSpace(s.data[s.pos]) {
 		s.pos++
 	}
 	if s.pos >= len(s.data) {
-		return xmlToken{}, fmt.Errorf("decode xml-rpc: unterminated start tag %q", name)
+		return xmlToken{}, fmt.Errorf("unterminated start tag %q", name)
 	}
 
 	selfClosing := false
@@ -165,11 +166,11 @@ func (s *xmlScanner) scanStartTag() (xmlToken, error) {
 	case '/':
 		s.pos++
 		if s.pos >= len(s.data) || s.data[s.pos] != '>' {
-			return xmlToken{}, fmt.Errorf("decode xml-rpc: malformed start tag %q", name)
+			return xmlToken{}, fmt.Errorf("malformed start tag %q", name)
 		}
 		selfClosing = true
 	default:
-		return xmlToken{}, fmt.Errorf("decode xml-rpc: attributes are not supported in start tag %q", name)
+		return xmlToken{}, fmt.Errorf("attributes are not supported in start tag %q", name)
 	}
 	s.pos++ // consume '>'
 
@@ -216,7 +217,7 @@ func unescapeText(b []byte) ([]byte, error) {
 		}
 		semi := bytes.IndexByte(b[i:], ';')
 		if semi < 0 {
-			return nil, fmt.Errorf("decode xml-rpc: unterminated entity reference")
+			return nil, errors.New("unterminated entity reference")
 		}
 		entity := string(b[i+1 : i+semi])
 		switch {
@@ -233,17 +234,17 @@ func unescapeText(b []byte) ([]byte, error) {
 		case strings.HasPrefix(entity, "#x") || strings.HasPrefix(entity, "#X"):
 			n, err := strconv.ParseInt(entity[2:], 16, 32)
 			if err != nil {
-				return nil, fmt.Errorf("decode xml-rpc: invalid numeric character reference %q: %w", entity, err)
+				return nil, fmt.Errorf("invalid numeric character reference %q: %w", entity, err)
 			}
 			out.WriteRune(rune(n))
 		case strings.HasPrefix(entity, "#"):
 			n, err := strconv.ParseInt(entity[1:], 10, 32)
 			if err != nil {
-				return nil, fmt.Errorf("decode xml-rpc: invalid numeric character reference %q: %w", entity, err)
+				return nil, fmt.Errorf("invalid numeric character reference %q: %w", entity, err)
 			}
 			out.WriteRune(rune(n))
 		default:
-			return nil, fmt.Errorf("decode xml-rpc: unknown entity reference %q", entity)
+			return nil, fmt.Errorf("unknown entity reference %q", entity)
 		}
 		i += semi + 1
 	}

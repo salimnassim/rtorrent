@@ -28,7 +28,7 @@ func TestClientPeersEndToEnd(t *testing.T) {
 		},
 	}, nil)
 
-	peers, err := c.Peers(context.Background(), "0123456789ABCDEF0123456789ABCDEF01234567")
+	peers, err := c.Peers(t.Context(), "0123456789ABCDEF0123456789ABCDEF01234567")
 	if err != nil {
 		t.Fatalf("Peers() unexpected error: %v", err)
 	}

@@ -9,10 +9,12 @@ import (
 	"time"
 )
 
+// DefaultTimeout is the per-call timeout a Client applies when the caller's
+// context has no deadline. Override it with WithTimeout.
 const DefaultTimeout = 6 * time.Second
 
-// ErrIncompatibleOption is returned by Call when an Option meant for a
-// different transport.
+// ErrIncompatibleOption is returned by Call when the Client was constructed
+// with an Option meant for a different transport.
 var ErrIncompatibleOption = errors.New("rtorrent: option incompatible with transport")
 
 // Client is an XML-RPC client for rTorrent, it is safe for concurrent use.
@@ -25,6 +27,9 @@ type Client struct {
 // Option configures a Client constructed by Dial, DialUnix, or DialHTTP.
 type Option func(*Client)
 
+// WithTimeout sets the timeout applied to a call whose context has no
+// deadline. A context deadline always takes precedence, and d <= 0 disables
+// the timeout.
 func WithTimeout(d time.Duration) Option {
 	return func(c *Client) {
 		c.timeout = d
@@ -54,12 +59,12 @@ func WithTLSConfig(cfg *tls.Config) Option {
 			c.err = fmt.Errorf("rtorrent: WithTLSConfig used with a non-HTTP transport (Dial/DialUnix); it only applies to DialHTTP: %w", ErrIncompatibleOption)
 			return
 		}
-		transport, ok := t.httpClient.Transport.(*http.Transport)
-		if !ok || transport == nil {
-			transport = http.DefaultTransport.(*http.Transport).Clone()
+		ht, ok := t.httpClient.Transport.(*http.Transport)
+		if !ok || ht == nil {
+			ht = http.DefaultTransport.(*http.Transport).Clone()
 		}
-		transport.TLSClientConfig = cfg
-		t.httpClient.Transport = transport
+		ht.TLSClientConfig = cfg
+		t.httpClient.Transport = ht
 	}
 }
 
@@ -75,10 +80,11 @@ func DialUnix(path string, opts ...Option) *Client {
 	return newClient(&scgiTransport{network: "unix", address: path}, opts)
 }
 
-// DialHTTP returns a Client that sends XML-RPC requests to url over HTTP,
-// for setups where a SCGI listener is proxied by a web server (e.g. nginx).
-func DialHTTP(url string, opts ...Option) *Client {
-	return newClient(&httpTransport{url: url, httpClient: &http.Client{}}, opts)
+// DialHTTP returns a Client that sends XML-RPC requests to the URL addr over
+// HTTP, for setups where a SCGI listener is proxied by a web server (e.g.
+// nginx).
+func DialHTTP(addr string, opts ...Option) *Client {
+	return newClient(&httpTransport{endpoint: addr, httpClient: &http.Client{}}, opts)
 }
 
 // newClient applies opts over a Client wrapping t.
@@ -292,4 +298,79 @@ func multicallRows(v Value, wantCols int) ([][]Value, error) {
 		rows[i] = row
 	}
 	return rows, nil
+}
+
+// rowReader decodes the columns of one multicall row in order, stopping at
+// the first error. Read calls must be made in the same order as the
+// commands passed to Multicall.
+type rowReader struct {
+	// what names the row type in errors, e.g. "torrent".
+	what string
+	row  []Value
+	col  int
+	err  error
+}
+
+// newRowReader returns a rowReader over row, which must have exactly
+// wantCols columns.
+func newRowReader(what string, row []Value, wantCols int) *rowReader {
+	r := &rowReader{what: what, row: row}
+	if len(row) != wantCols {
+		r.err = fmt.Errorf("rtorrent: %s row: got %d columns, want %d", what, len(row), wantCols)
+	}
+	return r
+}
+
+// next returns the next column, or false if an earlier read failed or the
+// row is exhausted.
+func (r *rowReader) next(field string) (Value, bool) {
+	if r.err != nil {
+		return Value{}, false
+	}
+	if r.col >= len(r.row) {
+		r.err = fmt.Errorf("rtorrent: %s row: %s: missing column %d", r.what, field, r.col)
+		return Value{}, false
+	}
+	v := r.row[r.col]
+	r.col++
+	return v, true
+}
+
+func (r *rowReader) fail(field string, err error) {
+	r.err = fmt.Errorf("rtorrent: %s row: %s: %w", r.what, field, err)
+}
+
+// readString decodes the next column into dst.
+func (r *rowReader) readString(dst *string, field string) {
+	v, ok := r.next(field)
+	if !ok {
+		return
+	}
+	s, err := v.AsString()
+	if err != nil {
+		r.fail(field, err)
+		return
+	}
+	*dst = s
+}
+
+// readInt64 decodes the next column into dst.
+func (r *rowReader) readInt64(dst *int64, field string) {
+	v, ok := r.next(field)
+	if !ok {
+		return
+	}
+	n, err := v.AsInt64()
+	if err != nil {
+		r.fail(field, err)
+		return
+	}
+	*dst = n
+}
+
+// readBool decodes the next column, an rTorrent 0/1 integer flag, into dst.
+func (r *rowReader) readBool(dst *bool, field string) {
+	var n int64
+	r.readInt64(&n, field)
+	*dst = n != 0
 }

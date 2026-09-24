@@ -1,16 +1,12 @@
 package rtorrent
 
-import (
-	"context"
-	"fmt"
-)
+import "context"
 
 // torrentColumns is the fixed list of d.* commands passed to d.multicall2 to
 // populate a Torrent, in the order Torrent's fields are read by
 // torrentFromRow.
 //
-// Column order here must exactly match the read order in
-// torrentFromRow; this is enforced only by a length check at runtime.
+// Column order here must exactly match the read order in torrentFromRow.
 var torrentColumns = []string{
 	"d.hash=",
 	"d.name=",
@@ -101,103 +97,36 @@ type Torrent struct {
 // torrentFromRow converts one d.multicall2 result row into a Torrent. Column
 // order must match torrentColumns.
 func torrentFromRow(row []Value) (*Torrent, error) {
-	if len(row) != len(torrentColumns) {
-		return nil, fmt.Errorf("rtorrent: torrent row: got %d columns, want %d", len(row), len(torrentColumns))
+	var t Torrent
+	r := newRowReader("torrent", row, len(torrentColumns))
+	r.readString(&t.Hash, "hash")
+	r.readString(&t.Name, "name")
+	r.readInt64(&t.SizeBytes, "size bytes")
+	r.readInt64(&t.CompletedBytes, "completed bytes")
+	r.readInt64(&t.LeftBytes, "left bytes")
+	r.readInt64(&t.DownRate, "down rate")
+	r.readInt64(&t.UpRate, "up rate")
+	r.readInt64(&t.DownTotal, "down total")
+	r.readInt64(&t.UpTotal, "up total")
+	r.readInt64(&t.Ratio, "ratio")
+	r.readInt64(&t.State, "state")
+	r.readBool(&t.IsActive, "is active")
+	r.readBool(&t.IsOpen, "is open")
+	r.readBool(&t.IsMultiFile, "is multi file")
+	r.readBool(&t.IsPrivate, "is private")
+	r.readString(&t.Message, "message")
+	r.readString(&t.BasePath, "base path")
+	r.readString(&t.Directory, "directory")
+	r.readInt64(&t.Priority, "priority")
+	r.readString(&t.Custom1, "custom1")
+	r.readString(&t.Custom2, "custom2")
+	r.readString(&t.Custom3, "custom3")
+	r.readString(&t.Custom4, "custom4")
+	r.readString(&t.Custom5, "custom5")
+	r.readInt64(&t.Hashing, "hashing")
+	if r.err != nil {
+		return nil, r.err
 	}
-
-	var (
-		t   Torrent
-		err error
-	)
-	if t.Hash, err = row[0].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: hash: %w", err)
-	}
-	if t.Name, err = row[1].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: name: %w", err)
-	}
-	if t.SizeBytes, err = row[2].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: size bytes: %w", err)
-	}
-	if t.CompletedBytes, err = row[3].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: completed bytes: %w", err)
-	}
-	if t.LeftBytes, err = row[4].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: left bytes: %w", err)
-	}
-	if t.DownRate, err = row[5].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: down rate: %w", err)
-	}
-	if t.UpRate, err = row[6].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: up rate: %w", err)
-	}
-	if t.DownTotal, err = row[7].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: down total: %w", err)
-	}
-	if t.UpTotal, err = row[8].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: up total: %w", err)
-	}
-	if t.Ratio, err = row[9].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: ratio: %w", err)
-	}
-	if t.State, err = row[10].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: state: %w", err)
-	}
-
-	isActive, err := row[11].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: is active: %w", err)
-	}
-	t.IsActive = isActive != 0
-
-	isOpen, err := row[12].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: is open: %w", err)
-	}
-	t.IsOpen = isOpen != 0
-
-	isMultiFile, err := row[13].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: is multi file: %w", err)
-	}
-	t.IsMultiFile = isMultiFile != 0
-
-	isPrivate, err := row[14].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: is private: %w", err)
-	}
-	t.IsPrivate = isPrivate != 0
-
-	if t.Message, err = row[15].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: message: %w", err)
-	}
-	if t.BasePath, err = row[16].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: base path: %w", err)
-	}
-	if t.Directory, err = row[17].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: directory: %w", err)
-	}
-	if t.Priority, err = row[18].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: priority: %w", err)
-	}
-	if t.Custom1, err = row[19].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: custom1: %w", err)
-	}
-	if t.Custom2, err = row[20].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: custom2: %w", err)
-	}
-	if t.Custom3, err = row[21].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: custom3: %w", err)
-	}
-	if t.Custom4, err = row[22].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: custom4: %w", err)
-	}
-	if t.Custom5, err = row[23].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: custom5: %w", err)
-	}
-	if t.Hashing, err = row[24].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: torrent row: hashing: %w", err)
-	}
-
 	return &t, nil
 }
 
