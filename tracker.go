@@ -1,9 +1,6 @@
 package rtorrent
 
-import (
-	"context"
-	"fmt"
-)
+import "context"
 
 // trackerColumns is the fixed list of t.* commands passed to t.multicall to
 // populate a Tracker, in the order Tracker's fields are read by
@@ -44,46 +41,19 @@ type Tracker struct {
 
 // trackerFromRow converts one t.multicall result row into a Tracker.
 func trackerFromRow(row []Value) (*Tracker, error) {
-	if len(row) != len(trackerColumns) {
-		return nil, fmt.Errorf("rtorrent: tracker row: got %d columns, want %d", len(row), len(trackerColumns))
+	var t Tracker
+	r := newRowReader("tracker", row, len(trackerColumns))
+	r.readString(&t.URL, "url")
+	r.readInt64(&t.Type, "type")
+	r.readInt64(&t.Group, "group")
+	r.readString(&t.ID, "id")
+	r.readBool(&t.IsEnabled, "is enabled")
+	r.readBool(&t.IsUsable, "is usable")
+	r.readInt64(&t.ScrapeComplete, "scrape complete")
+	r.readInt64(&t.ScrapeIncomplete, "scrape incomplete")
+	if r.err != nil {
+		return nil, r.err
 	}
-
-	var (
-		t   Tracker
-		err error
-	)
-	if t.URL, err = row[0].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: tracker row: url: %w", err)
-	}
-	if t.Type, err = row[1].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: tracker row: type: %w", err)
-	}
-	if t.Group, err = row[2].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: tracker row: group: %w", err)
-	}
-	if t.ID, err = row[3].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: tracker row: id: %w", err)
-	}
-
-	isEnabled, err := row[4].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: tracker row: is enabled: %w", err)
-	}
-	t.IsEnabled = isEnabled != 0
-
-	isUsable, err := row[5].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: tracker row: is usable: %w", err)
-	}
-	t.IsUsable = isUsable != 0
-
-	if t.ScrapeComplete, err = row[6].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: tracker row: scrape complete: %w", err)
-	}
-	if t.ScrapeIncomplete, err = row[7].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: tracker row: scrape incomplete: %w", err)
-	}
-
 	return &t, nil
 }
 

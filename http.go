@@ -11,7 +11,7 @@ import (
 const maxHTTPResponseBytes = 8 << 20
 
 type httpTransport struct {
-	url        string
+	endpoint   string
 	httpClient *http.Client
 	username   string
 	password   string
@@ -19,7 +19,7 @@ type httpTransport struct {
 
 // call implements transport.
 func (t *httpTransport) call(ctx context.Context, body []byte) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("http: build request: %w", err)
 	}

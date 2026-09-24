@@ -5,9 +5,10 @@ import (
 	"fmt"
 )
 
-// Kind identifies the XML-RPC type by a Value.
+// Kind identifies the XML-RPC type of a Value.
 type Kind int
 
+// The Kinds of Value, one per XML-RPC type.
 const (
 	KindString Kind = iota
 	KindInt
@@ -46,7 +47,9 @@ func (k Kind) String() string {
 	}
 }
 
-var ErrKind = errors.New("value: wrong kind")
+// ErrKind is returned (wrapped) by a Value's As* methods when the Value is
+// not of the requested Kind.
+var ErrKind = errors.New("rtorrent: wrong value kind")
 
 // Value is a single XML-RPC value: a scalar, an array of Values, or a
 // struct of named Values.
@@ -65,12 +68,13 @@ func NewString(s string) Value {
 	return Value{kind: KindString, str: s}
 }
 
-// NewInt returns a Value of Kind KindInt.
+// NewInt returns a Value of Kind KindInt, sent as an XML-RPC <i4>. A value
+// outside the 32-bit range is sent as <i8> instead.
 func NewInt(n int64) Value {
 	return Value{kind: KindInt, num: n}
 }
 
-// NewInt64 returns a Value of Kind KindInt64.
+// NewInt64 returns a Value of Kind KindInt64, sent as an XML-RPC <i8>.
 func NewInt64(n int64) Value {
 	return Value{kind: KindInt64, num: n}
 }

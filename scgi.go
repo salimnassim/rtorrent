@@ -23,7 +23,7 @@ func (s *scgiTransport) call(ctx context.Context, body []byte) ([]byte, error) {
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, s.network, s.address)
 	if err != nil {
-		return nil, fmt.Errorf("scgi: dial %s %s: %w", s.network, s.address, err)
+		return nil, fmt.Errorf("scgi: %w", err)
 	}
 	defer conn.Close()
 

@@ -1,6 +1,9 @@
 package rtorrent
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Fault represents an XML-RPC fault.
 type Fault struct {
@@ -24,7 +27,7 @@ func faultFromValue(v Value) (*Fault, error) {
 
 	codeValue, ok := members["faultCode"]
 	if !ok {
-		return nil, fmt.Errorf("decode xml-rpc fault: missing faultCode member")
+		return nil, errors.New("decode xml-rpc fault: missing faultCode member")
 	}
 	code, err := codeValue.AsInt64()
 	if err != nil {
@@ -33,7 +36,7 @@ func faultFromValue(v Value) (*Fault, error) {
 
 	stringValue, ok := members["faultString"]
 	if !ok {
-		return nil, fmt.Errorf("decode xml-rpc fault: missing faultString member")
+		return nil, errors.New("decode xml-rpc fault: missing faultString member")
 	}
 	str, err := stringValue.AsString()
 	if err != nil {

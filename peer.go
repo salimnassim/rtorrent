@@ -1,9 +1,6 @@
 package rtorrent
 
-import (
-	"context"
-	"fmt"
-)
+import "context"
 
 // peerColumns is the fixed list of p.* commands passed to p.multicall to
 // populate a Peer, in the order Peer's fields are read by peerFromRow.
@@ -53,55 +50,22 @@ type Peer struct {
 
 // peerFromRow converts one p.multicall result row into a Peer.
 func peerFromRow(row []Value) (*Peer, error) {
-	if len(row) != len(peerColumns) {
-		return nil, fmt.Errorf("rtorrent: peer row: got %d columns, want %d", len(row), len(peerColumns))
+	var p Peer
+	r := newRowReader("peer", row, len(peerColumns))
+	r.readString(&p.ID, "id")
+	r.readString(&p.Address, "address")
+	r.readInt64(&p.Port, "port")
+	r.readString(&p.ClientVersion, "client version")
+	r.readBool(&p.IsEncrypted, "is encrypted")
+	r.readBool(&p.IsIncoming, "is incoming")
+	r.readInt64(&p.UpRate, "up rate")
+	r.readInt64(&p.UpTotal, "up total")
+	r.readInt64(&p.DownRate, "down rate")
+	r.readInt64(&p.DownTotal, "down total")
+	r.readInt64(&p.CompletedPercent, "completed percent")
+	if r.err != nil {
+		return nil, r.err
 	}
-
-	var (
-		p   Peer
-		err error
-	)
-	if p.ID, err = row[0].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: id: %w", err)
-	}
-	if p.Address, err = row[1].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: address: %w", err)
-	}
-	if p.Port, err = row[2].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: port: %w", err)
-	}
-	if p.ClientVersion, err = row[3].AsString(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: client version: %w", err)
-	}
-
-	isEncrypted, err := row[4].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: is encrypted: %w", err)
-	}
-	p.IsEncrypted = isEncrypted != 0
-
-	isIncoming, err := row[5].AsInt64()
-	if err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: is incoming: %w", err)
-	}
-	p.IsIncoming = isIncoming != 0
-
-	if p.UpRate, err = row[6].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: up rate: %w", err)
-	}
-	if p.UpTotal, err = row[7].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: up total: %w", err)
-	}
-	if p.DownRate, err = row[8].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: down rate: %w", err)
-	}
-	if p.DownTotal, err = row[9].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: down total: %w", err)
-	}
-	if p.CompletedPercent, err = row[10].AsInt64(); err != nil {
-		return nil, fmt.Errorf("rtorrent: peer row: completed percent: %w", err)
-	}
-
 	return &p, nil
 }
 
