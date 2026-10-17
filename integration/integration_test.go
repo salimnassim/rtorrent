@@ -1,6 +1,4 @@
-//go:build integration
-
-package rtorrent_test
+package integration_test
 
 import (
 	"context"

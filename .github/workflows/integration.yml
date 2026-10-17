@@ -16,4 +16,5 @@ jobs:
           go-version-file: go.mod
 
       - name: Integration test
-        run: go test -tags=integration -v ./...
+        working-directory: integration
+        run: go test -v ./...
