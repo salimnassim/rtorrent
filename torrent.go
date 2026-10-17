@@ -1,6 +1,15 @@
 package rtorrent
 
-import "context"
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+)
+
+// ErrTorrentNotFound is returned (wrapped) by Torrent and TorrentCustom when
+// rTorrent has no torrent with the given hash.
+var ErrTorrentNotFound = errors.New("rtorrent: torrent not found")
 
 // torrentColumns is the fixed list of d.* commands passed to d.multicall2 to
 // populate a Torrent, in the order Torrent's fields are read by
@@ -154,4 +163,70 @@ func (c *Client) Torrents(ctx context.Context, view string) ([]*Torrent, error) 
 func (c *Client) TorrentsCustom(ctx context.Context, view string, cmds ...string) ([][]Value, error) {
 	leading := []Value{NewString(""), NewString(view)}
 	return c.Multicall(ctx, "d.multicall2", leading, cmds...)
+}
+
+// Torrent returns the torrent identified by hash, populated via a single
+// system.multicall round trip. It returns ErrTorrentNotFound if rTorrent has
+// no such torrent.
+func (c *Client) Torrent(ctx context.Context, hash string) (*Torrent, error) {
+	row, err := c.TorrentCustom(ctx, hash, torrentColumns...)
+	if err != nil {
+		return nil, err
+	}
+	return torrentFromRow(row)
+}
+
+// TorrentCustom calls each of cmds against the torrent identified by hash via
+// system.multicall, returning one raw Value per command.
+func (c *Client) TorrentCustom(ctx context.Context, hash string, cmds ...string) ([]Value, error) {
+	calls := make([]Value, len(cmds))
+	for i, cmd := range cmds {
+		calls[i] = NewStruct(map[string]Value{
+			"methodName": NewString(strings.TrimSuffix(cmd, "=")),
+			"params":     NewArray([]Value{NewString(hash)}),
+		})
+	}
+
+	v, err := c.Call(ctx, "system.multicall", NewArray(calls))
+	if err != nil {
+		return nil, err
+	}
+	return systemMulticallRow(v, len(cmds))
+}
+
+// systemMulticallRow unpacks a system.multicall response, in which each
+// result is either a one-element array (success) or a fault struct, into one
+// Value per call.
+func systemMulticallRow(v Value, wantCols int) ([]Value, error) {
+	results, err := v.AsArray()
+	if err != nil {
+		return nil, fmt.Errorf("rtorrent: system.multicall response: %w", err)
+	}
+	if len(results) != wantCols {
+		return nil, fmt.Errorf("rtorrent: system.multicall response: got %d results, want %d", len(results), wantCols)
+	}
+
+	row := make([]Value, len(results))
+	for i, result := range results {
+		if result.Kind() == KindStruct {
+			f, err := faultFromValue(result)
+			if err != nil {
+				return nil, fmt.Errorf("rtorrent: system.multicall response: result %d: %w", i, err)
+			}
+			if strings.Contains(f.FaultString, "info-hash") {
+				return nil, fmt.Errorf("%w: %w", ErrTorrentNotFound, f)
+			}
+			return nil, f
+		}
+
+		elems, err := result.AsArray()
+		if err != nil {
+			return nil, fmt.Errorf("rtorrent: system.multicall response: result %d: %w", i, err)
+		}
+		if len(elems) != 1 {
+			return nil, fmt.Errorf("rtorrent: system.multicall response: result %d: got %d values, want 1", i, len(elems))
+		}
+		row[i] = elems[0]
+	}
+	return row, nil
 }
