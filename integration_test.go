@@ -264,6 +264,66 @@ func TestIntegration_FileMulticall(t *testing.T) {
 	}
 }
 
+func TestIntegration_Torrent(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	want := loadFake(t, client)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	got, err := client.Torrent(ctx, want.Hash)
+	if err != nil {
+		t.Fatalf("Torrent(%q) error: %v", want.Hash, err)
+	}
+	if *got != *want {
+		t.Errorf("Torrent(%q) = %+v, want %+v", want.Hash, got, want)
+	}
+}
+
+func TestIntegration_TorrentCustom(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	torrent := loadFake(t, client)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	row, err := client.TorrentCustom(ctx, torrent.Hash, "d.name=", "d.size_bytes=")
+	if err != nil {
+		t.Fatalf("TorrentCustom(%q) error: %v", torrent.Hash, err)
+	}
+	if len(row) != 2 {
+		t.Fatalf("TorrentCustom(%q) returned %d values, want 2", torrent.Hash, len(row))
+	}
+	if name, err := row[0].AsString(); err != nil || name != "fixture.txt" {
+		t.Errorf("TorrentCustom() name = %q, %v, want %q", name, err, "fixture.txt")
+	}
+	if size, err := row[1].AsInt64(); err != nil || size != 16 {
+		t.Errorf("TorrentCustom() size = %d, %v, want 16", size, err)
+	}
+}
+
+func TestIntegration_TorrentNotFound(t *testing.T) {
+	addr := startRtorrent(t)
+	client := rtorrent.Dial(addr)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	const missing = "0000000000000000000000000000000000000000"
+	_, err := client.Torrent(ctx, missing)
+	if !errors.Is(err, rtorrent.ErrTorrentNotFound) {
+		t.Fatalf("Torrent(%q) error = %v, want it to match ErrTorrentNotFound", missing, err)
+	}
+	var fault *rtorrent.Fault
+	if !errors.As(err, &fault) {
+		t.Errorf("errors.As(%v, *Fault) = false, want true", err)
+	}
+}
+
 func TestIntegration_TorrentLifecycle(t *testing.T) {
 	addr := startRtorrent(t)
 	client := rtorrent.Dial(addr)
