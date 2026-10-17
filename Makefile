@@ -1,9 +1,6 @@
-.PHONY: build test test-integration fuzz ci
+.PHONY: test test-integration fuzz ci
 
 FUZZ_TARGETS := FuzzDecodeMethodResponse FuzzXMLScannerToken FuzzReadSCGIResponse FuzzEncodeDecodeString FuzzEncodeDecodeBase64
-
-build:
-	go build -o ./dist/rtctl ./cmd/rtctl
 
 test:
 	go test -v ./...
